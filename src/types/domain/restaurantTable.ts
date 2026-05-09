@@ -1,5 +1,6 @@
-export type TableStatus = 'active' | 'blocked'
+import type { Location } from './location'
 
+export type TableStatus = 'active' | 'blocked'
 
 export interface RestaurantTable {
     id: string
