@@ -1,75 +1,95 @@
-# React + TypeScript + Vite
+# 🍔 The Gordo — Sistema de Reservas
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicación web para gestionar reservas de mesas del restaurante **Comidas Rápidas The Gordo**. Permite a los clientes reservar mesas de forma autónoma y al administrador gestionar el restaurante desde un panel centralizado.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+| Tecnología | Uso |
+|---|---|
+| React + TypeScript | Frontend SPA |
+| Vite | Bundler y dev server |
+| Tailwind CSS | Estilos |
+| Supabase | Base de datos + autenticación |
+| React Router | Navegación |
+| Vercel | Deploy |
 
-## React Compiler
+## Arquitectura
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+El proyecto sigue un patrón **MVC adaptado** donde cada capa solo conoce la capa inmediatamente inferior:
 
-Note: This will impact Vite dev & build performances.
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```
+Pages → Hooks → Controllers → Services → Supabase
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
 ```
+src/
+├── controllers/        # Lógica de negocio y validaciones
+├── hooks/              # Bridge entre controllers y vistas
+├── lib/
+│   └── supabase.ts     # Cliente Supabase tipado
+├── pages/
+│   └── admin/          # Panel de administración
+├── routes/
+│   └── AppRouter.tsx   # Rutas de la aplicación
+├── services/           # Única capa que habla con Supabase
+└── types/
+    ├── database.types.ts   # Tipos auto-generados por Supabase CLI
+    ├── domain/             # Tipos del dominio (camelCase, enums, Date)
+    └── index.ts            # Barrel exports
+```
+
+## Instalación local
+
+```bash
+# Clonar el repositorio
+git clone https://github.com/tu-usuario/the_gordo.git
+cd the_gordo
+
+# Instalar dependencias
+npm install
+
+# Configurar variables de entorno
+cp .env.example .env
+# Editar .env con tus credenciales de Supabase
+
+# Correr en desarrollo
+npm run dev
+```
+
+## Variables de entorno
+
+```
+VITE_SUPABASE_URL=https://tu-proyecto.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=tu-anon-key
+```
+
+## Base de datos
+
+Tablas en Supabase (orden de creación por dependencias FK):
+
+```
+locations → restaurant_tables → schedules → reservations
+```
+
+Para regenerar los tipos TypeScript desde el schema:
+
+```bash
+npx supabase gen types typescript --project-id TU_PROJECT_ID > src/types/database.types.ts
+```
+
+## Módulos
+
+**Cliente (público)**
+- Vista gráfica del salón con estado en tiempo real de cada mesa
+- Selección de mesa, fecha, hora y número de personas
+- Formulario de reserva y pantalla de confirmación
+
+**Administrador (autenticado)**
+- Gestión de mesas: crear, editar, bloquear/desbloquear
+- Gestión de ubicaciones del salón
+- Gestión de horarios por día de la semana
+- Listado y cancelación de reservas
+
+## Deploy
+
+El proyecto se despliega automáticamente en Vercel con cada push a `main`. Configurar las variables de entorno en el panel de Vercel antes del primer deploy.
