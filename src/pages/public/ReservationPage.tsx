@@ -126,7 +126,12 @@ export default function ReservationPage() {
   const handleNameChange = (val: string) => {
     const clean = val.replace(/[0-9]/g, '')
     setCustomerName(clean)
-    setNameError(val !== clean ? 'El nombre no debe contener números.' : '')
+    if (val !== clean) {
+      setNameError('El nombre no debe contener números.')
+      setTimeout(() => setNameError(''), 1500)
+    } else {
+      setNameError('')
+    }
   }
 
   const handlePhoneChange = (val: string) => {
@@ -134,6 +139,7 @@ export default function ReservationPage() {
     setCustomerPhone(clean)
     if (val !== clean) {
       setPhoneError('El teléfono no debe contener letras.')
+      setTimeout(() => setPhoneError(''), 1500)
     } else if (clean.replace(/\D/g, '').length > 0 && clean.replace(/\D/g, '').length !== 10) {
       setPhoneError('El teléfono debe tener 10 dígitos.')
     } else {
