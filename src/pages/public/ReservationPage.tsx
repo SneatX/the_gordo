@@ -1,27 +1,51 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, Check, Users, Calendar, Clock, User, Phone, Mail } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, Users, Calendar, Clock, User, Phone, Mail, MapPin } from 'lucide-react'
 import { reservationController } from '@/controllers/reservation.controller'
+import { useSchedules } from '@/hooks/useSchedules'
+import { useLocations } from '@/hooks/useLocations'
 import type { RestaurantTable, Reservation } from '@/types'
 
 const DURATION = 90
 
 type Step = 1 | 2 | 3 | 'success'
 
-const input =
-  'w-full border-2 border-stone-dark rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-brand-orange transition-colors bg-white'
-const label = 'block font-display font-semibold text-stone-dark mb-1 text-sm'
+const inputCls = 'w-full border-2 border-stone-dark rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-brand-orange transition-colors bg-white disabled:opacity-50 disabled:cursor-not-allowed'
+const inputErrCls = 'w-full border-2 border-brand-red rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-brand-red transition-colors bg-white'
+const labelCls = 'block font-display font-semibold text-stone-dark mb-1 text-sm'
+
+// ── helpers ─────────────────────────────────────────────────────────────────
+
+const toAmPm = (hhmm: string): string => {
+  const [hStr, mStr] = hhmm.split(':')
+  const h = parseInt(hStr, 10)
+  const h12 = h % 12 || 12
+  return `${h12}:${mStr} ${h >= 12 ? 'PM' : 'AM'}`
+}
+
+const toMinutes = (hhmm: string) => {
+  const [h, m] = hhmm.split(':').map(Number)
+  return h * 60 + m
+}
+
+const fromMinutes = (mins: number) => {
+  const h = Math.floor(mins / 60)
+  const m = mins % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
+// ── sub-components ───────────────────────────────────────────────────────────
 
 function StepIndicator({ current }: { current: Step }) {
   const steps = [
     { n: 1, label: 'Fecha y personas' },
-    { n: 2, label: 'Elegí tu mesa' },
+    { n: 2, label: 'Elige tu mesa' },
     { n: 3, label: 'Tus datos' },
   ]
   return (
     <div className="flex items-center gap-1 justify-center mb-10">
       {steps.map(({ n, label }, i) => {
-        const done = typeof current === 'number' && current > n || current === 'success'
+        const done = (typeof current === 'number' && current > n) || current === 'success'
         const active = current === n
         return (
           <div key={n} className="flex items-center gap-1">
@@ -46,44 +70,131 @@ function StepIndicator({ current }: { current: Step }) {
   )
 }
 
+function SummaryBar({ date, time, partySize, tableNumber }: {
+  date: string; time: string; partySize: number; tableNumber?: number
+}) {
+  const dateLabel = date
+    ? new Date(date + 'T00:00:00').toLocaleDateString('es-CO', { weekday: 'long', day: '2-digit', month: 'long' })
+    : ''
+  return (
+    <div className="bg-bg-warm border-2 border-stone-dark/30 rounded-2xl px-5 py-3 flex flex-wrap gap-4 text-sm">
+      <span className="font-display text-stone-dark capitalize">
+        <Calendar className="inline w-4 h-4 mr-1 mb-0.5 text-brand-orange" />
+        {dateLabel}
+      </span>
+      <span className="font-display text-stone-dark">
+        <Clock className="inline w-4 h-4 mr-1 mb-0.5 text-brand-orange" />
+        {toAmPm(time)} · {DURATION} min
+      </span>
+      <span className="font-display text-stone-dark">
+        <Users className="inline w-4 h-4 mr-1 mb-0.5 text-brand-orange" />
+        {partySize} {partySize === 1 ? 'persona' : 'personas'}
+      </span>
+      {tableNumber != null && (
+        <span className="font-display text-stone-dark font-semibold">Mesa #{tableNumber}</span>
+      )}
+    </div>
+  )
+}
+
+// ── page ─────────────────────────────────────────────────────────────────────
+
 export default function ReservationPage() {
+  const { schedules } = useSchedules()
+  const { locations } = useLocations()
+
   const [step, setStep] = useState<Step>(1)
 
-  // Step 1
+  // step 1
   const [date, setDate] = useState('')
   const [time, setTime] = useState('')
   const [partySize, setPartySize] = useState(2)
 
-  // Step 2
+  // step 2
   const [availableTables, setAvailableTables] = useState<RestaurantTable[]>([])
   const [selectedTableId, setSelectedTableId] = useState('')
   const [searchError, setSearchError] = useState<string | null>(null)
   const [searching, setSearching] = useState(false)
 
-  // Step 3
+  // step 3
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
   const [customerEmail, setCustomerEmail] = useState('')
+  const [nameError, setNameError] = useState('')
+  const [phoneError, setPhoneError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
-  // Success
+  // success
   const [reservation, setReservation] = useState<Reservation | null>(null)
 
-  const startTime = date && time ? new Date(`${date}T${time}`) : null
+  // schedule for selected date ─────────────────────────────────────────────
+
+  const activeSchedule = useMemo(() => {
+    if (!date) return null
+    const dow = new Date(date + 'T00:00:00').getDay()
+    return schedules.find((s) => s.dayOfWeek === dow && s.isActive) ?? null
+  }, [date, schedules])
+
+  // 30-min time slots within schedule, honouring 2h advance ─────────────────
+
+  const timeSlots = useMemo(() => {
+    if (!activeSchedule || !date) return []
+    const open = toMinutes(activeSchedule.startTime)
+    const close = toMinutes(activeSchedule.endTime)
+    const lastStart = close - DURATION
+
+    const now = new Date()
+    const isToday = new Date(date + 'T00:00:00').toDateString() === now.toDateString()
+    const minAdvanceMs = 2 * 60 * 60 * 1000
+
+    const slots: string[] = []
+    for (let m = open; m <= lastStart; m += 30) {
+      if (isToday) {
+        const slotDate = new Date(date + 'T00:00:00')
+        slotDate.setHours(Math.floor(m / 60), m % 60, 0, 0)
+        if (slotDate.getTime() - now.getTime() < minAdvanceMs) continue
+      }
+      slots.push(fromMinutes(m))
+    }
+    return slots
+  }, [activeSchedule, date])
+
+  // tables grouped by location ──────────────────────────────────────────────
+
+  const tableGroups = useMemo(() => {
+    const map = new Map<string, { locationName: string; tables: RestaurantTable[] }>()
+    for (const table of availableTables) {
+      const key = table.locationId ?? '__none__'
+      if (!map.has(key)) {
+        const name = table.locationId
+          ? (locations.find((l) => l.id === table.locationId)?.name ?? 'Otra ubicación')
+          : 'Sin ubicación'
+        map.set(key, { locationName: name, tables: [] })
+      }
+      map.get(key)!.tables.push(table)
+    }
+    return Array.from(map.values())
+  }, [availableTables, locations])
+
+  // handlers ────────────────────────────────────────────────────────────────
+
+  const handleDateChange = (newDate: string) => {
+    setDate(newDate)
+    setTime('')
+    setSearchError(null)
+  }
 
   const handleSearchTables = async () => {
-    if (!startTime) return
+    if (!date || !time) return
     setSearching(true)
     setSearchError(null)
+    const startTime = new Date(`${date}T${time}`)
     const res = await reservationController.getAvailableTables(startTime, DURATION, partySize)
     setSearching(false)
-    if (!res.ok) {
-      setSearchError(res.error)
-      return
-    }
+    if (!res.ok) { setSearchError(res.error); return }
     if (res.data.length === 0) {
-      setSearchError('No hay mesas disponibles para ese horario y cantidad de personas. Probá con otro horario.')
+      setSearchError('No hay mesas disponibles para ese horario y cantidad de personas. Intenta con otro horario.')
       return
     }
     setAvailableTables(res.data)
@@ -91,31 +202,37 @@ export default function ReservationPage() {
     setStep(2)
   }
 
+  const handleNameChange = (val: string) => {
+    const clean = val.replace(/[0-9]/g, '')
+    setCustomerName(clean)
+    setNameError(val !== clean ? 'El nombre no debe contener números.' : '')
+  }
+
+  const handlePhoneChange = (val: string) => {
+    const clean = val.replace(/[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]/g, '')
+    setCustomerPhone(clean)
+    setPhoneError(val !== clean ? 'El teléfono no debe contener letras.' : '')
+  }
+
   const handleSubmit = async () => {
-    if (!startTime || !selectedTableId) return
+    if (!date || !time || !selectedTableId || nameError || phoneError) return
+    const startTime = new Date(`${date}T${time}`)
     setSubmitting(true)
     setSubmitError(null)
     const res = await reservationController.create(
-      selectedTableId,
-      customerName,
-      customerEmail,
-      customerPhone,
-      partySize,
-      startTime,
-      DURATION,
+      selectedTableId, customerName, customerEmail, customerPhone,
+      partySize, startTime, DURATION,
     )
     setSubmitting(false)
-    if (!res.ok) {
-      setSubmitError(res.error)
-      return
-    }
+    if (!res.ok) { setSubmitError(res.error); return }
     setReservation(res.data)
     setStep('success')
   }
 
   const selectedTable = availableTables.find((t) => t.id === selectedTableId)
-
   const todayStr = new Date().toISOString().split('T')[0]
+
+  // ── render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="min-h-screen bg-bg-cream font-body">
@@ -123,10 +240,7 @@ export default function ReservationPage() {
       {/* Nav */}
       <header className="bg-brand-orange border-b-4 border-stone-dark shadow-[0_4px_0px_#78350F]">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center gap-3">
-          <Link
-            to="/"
-            className="flex items-center gap-2 text-white/80 hover:text-white font-display text-sm transition-colors"
-          >
+          <Link to="/" className="flex items-center gap-2 text-white/80 hover:text-white font-display text-sm transition-colors">
             <ArrowLeft className="w-4 h-4" />
             <img src="/icon.png" alt="The Gordo" className="w-6 h-6 rounded border border-white/40" />
             Inicio
@@ -137,50 +251,76 @@ export default function ReservationPage() {
       </header>
 
       <div className="max-w-2xl mx-auto px-4 py-10">
-
         {step !== 'success' && <StepIndicator current={step} />}
 
-        {/* ─── STEP 1: Fecha, hora y personas ─── */}
+        {/* ─── STEP 1 ──────────────────────────────────────────────────────── */}
         {step === 1 && (
           <div className="bg-white border-4 border-stone-dark rounded-3xl p-6 md:p-8 shadow-[6px_6px_0px_#78350F]">
             <h1 className="font-display font-black text-2xl text-stone-dark mb-1">
-              ¿Cuándo querés venir?
+              ¿Cuándo quieres venir?
             </h1>
             <p className="text-stone-mid text-sm mb-7">
-              Elegí fecha, hora y cantidad de personas.
+              Elige fecha, hora y cantidad de personas.
             </p>
 
             <div className="space-y-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className={label}>
-                    <Calendar className="inline w-4 h-4 mr-1 mb-0.5" />
-                    Fecha
-                  </label>
-                  <input
-                    type="date"
-                    className={input}
-                    value={date}
-                    min={todayStr}
-                    onChange={(e) => setDate(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className={label}>
-                    <Clock className="inline w-4 h-4 mr-1 mb-0.5" />
-                    Hora
-                  </label>
-                  <input
-                    type="time"
-                    className={input}
-                    value={time}
-                    onChange={(e) => setTime(e.target.value)}
-                  />
-                </div>
+
+              {/* Fecha */}
+              <div>
+                <label className={labelCls}>
+                  <Calendar className="inline w-4 h-4 mr-1 mb-0.5" />
+                  Fecha
+                </label>
+                <input
+                  type="date"
+                  className={inputCls}
+                  value={date}
+                  min={todayStr}
+                  onChange={(e) => handleDateChange(e.target.value)}
+                />
+                {date && !activeSchedule && (
+                  <p className="mt-1.5 text-xs font-display text-brand-red">
+                    El restaurante no atiende ese día. Por favor elige otra fecha.
+                  </p>
+                )}
               </div>
 
+              {/* Hora */}
               <div>
-                <label className={label}>
+                <label className={labelCls}>
+                  <Clock className="inline w-4 h-4 mr-1 mb-0.5" />
+                  Hora
+                </label>
+                <select
+                  className={inputCls}
+                  value={time}
+                  disabled={!activeSchedule || timeSlots.length === 0}
+                  onChange={(e) => setTime(e.target.value)}
+                >
+                  <option value="">
+                    {!date
+                      ? 'Primero elige una fecha'
+                      : !activeSchedule
+                      ? 'Sin horario disponible'
+                      : timeSlots.length === 0
+                      ? 'No hay horas disponibles (mínimo 2 h de anticipación)'
+                      : 'Selecciona una hora'}
+                  </option>
+                  {timeSlots.map((slot) => (
+                    <option key={slot} value={slot}>{toAmPm(slot)}</option>
+                  ))}
+                </select>
+                {activeSchedule && timeSlots.length > 0 && (
+                  <p className="mt-1 text-xs text-stone-mid font-display">
+                    Horario: {toAmPm(activeSchedule.startTime)} – {toAmPm(activeSchedule.endTime)}
+                    &nbsp;· Reserva mínimo con 2 h de anticipación.
+                  </p>
+                )}
+              </div>
+
+              {/* Personas */}
+              <div>
+                <label className={labelCls}>
                   <Users className="inline w-4 h-4 mr-1 mb-0.5" />
                   Personas
                 </label>
@@ -189,22 +329,14 @@ export default function ReservationPage() {
                     type="button"
                     onClick={() => setPartySize((p) => Math.max(1, p - 1))}
                     className="w-10 h-10 rounded-xl border-2 border-stone-dark font-display font-bold text-lg text-stone-dark hover:bg-bg-warm transition-colors shadow-[2px_2px_0px_#78350F] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px]"
-                  >
-                    −
-                  </button>
-                  <span className="font-display font-black text-2xl text-stone-dark w-8 text-center">
-                    {partySize}
-                  </span>
+                  >−</button>
+                  <span className="font-display font-black text-2xl text-stone-dark w-8 text-center">{partySize}</span>
                   <button
                     type="button"
                     onClick={() => setPartySize((p) => Math.min(20, p + 1))}
                     className="w-10 h-10 rounded-xl border-2 border-stone-dark font-display font-bold text-lg text-stone-dark hover:bg-bg-warm transition-colors shadow-[2px_2px_0px_#78350F] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px]"
-                  >
-                    +
-                  </button>
-                  <span className="text-stone-mid text-sm">
-                    {partySize === 1 ? 'persona' : 'personas'}
-                  </span>
+                  >+</button>
+                  <span className="text-stone-mid text-sm">{partySize === 1 ? 'persona' : 'personas'}</span>
                 </div>
               </div>
 
@@ -216,77 +348,64 @@ export default function ReservationPage() {
 
               <button
                 type="button"
-                disabled={!date || !time || searching}
+                disabled={!date || !time || !activeSchedule || searching}
                 onClick={handleSearchTables}
                 className="w-full flex items-center justify-center gap-2 bg-brand-orange hover:bg-brand-orange-dark disabled:opacity-50 disabled:cursor-not-allowed text-white font-display font-black text-base px-6 py-3.5 rounded-2xl border-2 border-stone-dark shadow-[4px_4px_0px_#78350F] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all"
               >
-                {searching ? 'Buscando mesas...' : (
-                  <>
-                    Ver mesas disponibles
-                    <ArrowRight className="w-5 h-5" />
-                  </>
-                )}
+                {searching ? 'Buscando mesas...' : <>Ver mesas disponibles <ArrowRight className="w-5 h-5" /></>}
               </button>
             </div>
           </div>
         )}
 
-        {/* ─── STEP 2: Seleccionar mesa ─── */}
+        {/* ─── STEP 2 ──────────────────────────────────────────────────────── */}
         {step === 2 && (
           <div className="space-y-5">
-            <div className="bg-bg-warm border-2 border-stone-dark/30 rounded-2xl px-5 py-3 flex flex-wrap gap-4 text-sm">
-              <span className="font-display text-stone-dark">
-                <Calendar className="inline w-4 h-4 mr-1 mb-0.5 text-brand-orange" />
-                {startTime?.toLocaleDateString('es-CO', { weekday: 'long', day: '2-digit', month: 'long' })}
-              </span>
-              <span className="font-display text-stone-dark">
-                <Clock className="inline w-4 h-4 mr-1 mb-0.5 text-brand-orange" />
-                {time} · {DURATION} min
-              </span>
-              <span className="font-display text-stone-dark">
-                <Users className="inline w-4 h-4 mr-1 mb-0.5 text-brand-orange" />
-                {partySize} {partySize === 1 ? 'persona' : 'personas'}
-              </span>
-            </div>
+            <SummaryBar date={date} time={time} partySize={partySize} />
 
             <div className="bg-white border-4 border-stone-dark rounded-3xl p-6 md:p-8 shadow-[6px_6px_0px_#78350F]">
-              <h1 className="font-display font-black text-2xl text-stone-dark mb-1">
-                Elegí tu mesa
-              </h1>
+              <h1 className="font-display font-black text-2xl text-stone-dark mb-1">Elige tu mesa</h1>
               <p className="text-stone-mid text-sm mb-6">
                 {availableTables.length} {availableTables.length === 1 ? 'mesa disponible' : 'mesas disponibles'} para ese horario.
               </p>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
-                {availableTables.map((table) => {
-                  const selected = table.id === selectedTableId
-                  return (
-                    <button
-                      key={table.id}
-                      type="button"
-                      onClick={() => setSelectedTableId(table.id)}
-                      className={`p-4 rounded-2xl border-2 text-left transition-all
-                        ${selected
-                          ? 'border-brand-orange bg-brand-orange/10 shadow-[3px_3px_0px_#F97316]'
-                          : 'border-stone-dark/40 bg-bg-cream hover:border-stone-dark hover:bg-bg-warm'
-                        }`}
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="font-display font-black text-stone-dark text-base">
-                          Mesa #{table.number}
-                        </span>
-                        {selected && (
-                          <span className="w-5 h-5 bg-brand-orange rounded-full flex items-center justify-center">
-                            <Check className="w-3 h-3 text-white" />
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-stone-mid text-sm font-display">
-                        Hasta {table.capacity} {table.capacity === 1 ? 'persona' : 'personas'}
-                      </span>
-                    </button>
-                  )
-                })}
+              <div className="space-y-6 mb-6">
+                {tableGroups.map(({ locationName, tables }) => (
+                  <div key={locationName}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <MapPin className="w-4 h-4 text-brand-orange flex-shrink-0" />
+                      <span className="font-display font-bold text-stone-dark text-sm">{locationName}</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-5">
+                      {tables.map((table) => {
+                        const selected = table.id === selectedTableId
+                        return (
+                          <button
+                            key={table.id}
+                            type="button"
+                            onClick={() => setSelectedTableId(table.id)}
+                            className={`p-4 rounded-2xl border-2 text-left transition-all
+                              ${selected
+                                ? 'border-brand-orange bg-brand-orange/10 shadow-[3px_3px_0px_#F97316]'
+                                : 'border-stone-dark/40 bg-bg-cream hover:border-stone-dark hover:bg-bg-warm'}`}
+                          >
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="font-display font-black text-stone-dark text-base">Mesa #{table.number}</span>
+                              {selected && (
+                                <span className="w-5 h-5 bg-brand-orange rounded-full flex items-center justify-center">
+                                  <Check className="w-3 h-3 text-white" />
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-stone-mid text-sm font-display">
+                              Hasta {table.capacity} {table.capacity === 1 ? 'persona' : 'personas'}
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
               </div>
 
               <div className="flex gap-3">
@@ -295,91 +414,76 @@ export default function ReservationPage() {
                   onClick={() => setStep(1)}
                   className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-stone-dark font-display font-semibold text-sm text-stone-dark hover:bg-bg-warm transition-colors"
                 >
-                  <ArrowLeft className="w-4 h-4" />
-                  Volver
+                  <ArrowLeft className="w-4 h-4" /> Volver
                 </button>
                 <button
                   type="button"
                   disabled={!selectedTableId}
                   onClick={() => setStep(3)}
-                  className="flex-2 flex-1 flex items-center justify-center gap-2 bg-brand-orange hover:bg-brand-orange-dark disabled:opacity-50 text-white font-display font-black text-sm px-6 py-3 rounded-2xl border-2 border-stone-dark shadow-[3px_3px_0px_#78350F] hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] transition-all"
+                  className="flex-1 flex items-center justify-center gap-2 bg-brand-orange hover:bg-brand-orange-dark disabled:opacity-50 text-white font-display font-black text-sm px-6 py-3 rounded-2xl border-2 border-stone-dark shadow-[3px_3px_0px_#78350F] hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] transition-all"
                 >
-                  Continuar
-                  <ArrowRight className="w-4 h-4" />
+                  Continuar <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* ─── STEP 3: Datos del cliente ─── */}
+        {/* ─── STEP 3 ──────────────────────────────────────────────────────── */}
         {step === 3 && (
           <div className="space-y-5">
-            {/* Resumen */}
-            <div className="bg-bg-warm border-2 border-stone-dark/30 rounded-2xl px-5 py-3 flex flex-wrap gap-4 text-sm">
-              <span className="font-display text-stone-dark">
-                <Calendar className="inline w-4 h-4 mr-1 mb-0.5 text-brand-orange" />
-                {startTime?.toLocaleDateString('es-CO', { weekday: 'long', day: '2-digit', month: 'long' })}
-              </span>
-              <span className="font-display text-stone-dark">
-                <Clock className="inline w-4 h-4 mr-1 mb-0.5 text-brand-orange" />
-                {time}
-              </span>
-              <span className="font-display text-stone-dark">
-                <Users className="inline w-4 h-4 mr-1 mb-0.5 text-brand-orange" />
-                {partySize} {partySize === 1 ? 'persona' : 'personas'}
-              </span>
-              {selectedTable && (
-                <span className="font-display text-stone-dark font-semibold">
-                  Mesa #{selectedTable.number}
-                </span>
-              )}
-            </div>
+            <SummaryBar date={date} time={time} partySize={partySize} tableNumber={selectedTable?.number} />
 
             <div className="bg-white border-4 border-stone-dark rounded-3xl p-6 md:p-8 shadow-[6px_6px_0px_#78350F]">
-              <h1 className="font-display font-black text-2xl text-stone-dark mb-1">
-                ¿A nombre de quién?
-              </h1>
+              <h1 className="font-display font-black text-2xl text-stone-dark mb-1">¿A nombre de quién?</h1>
               <p className="text-stone-mid text-sm mb-7">
                 Solo necesitamos tu nombre y teléfono para confirmar la reserva.
               </p>
 
               <div className="space-y-4">
+
+                {/* Nombre */}
                 <div>
-                  <label className={label}>
+                  <label className={labelCls}>
                     <User className="inline w-4 h-4 mr-1 mb-0.5" />
                     Nombre completo <span className="text-brand-red">*</span>
                   </label>
                   <input
                     type="text"
-                    className={input}
+                    className={nameError ? inputErrCls : inputCls}
                     placeholder="Juan García"
                     value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
+                    onChange={(e) => handleNameChange(e.target.value)}
                     autoFocus
                   />
+                  {nameError && <p className="mt-1 text-xs text-brand-red font-display">{nameError}</p>}
                 </div>
+
+                {/* Teléfono */}
                 <div>
-                  <label className={label}>
+                  <label className={labelCls}>
                     <Phone className="inline w-4 h-4 mr-1 mb-0.5" />
                     Teléfono <span className="text-brand-red">*</span>
                   </label>
                   <input
                     type="tel"
-                    className={input}
+                    className={phoneError ? inputErrCls : inputCls}
                     placeholder="300 123 4567"
                     value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    onChange={(e) => handlePhoneChange(e.target.value)}
                   />
+                  {phoneError && <p className="mt-1 text-xs text-brand-red font-display">{phoneError}</p>}
                 </div>
+
+                {/* Email */}
                 <div>
-                  <label className={label}>
+                  <label className={labelCls}>
                     <Mail className="inline w-4 h-4 mr-1 mb-0.5" />
-                    Email <span className="text-stone-mid font-normal">(opcional)</span>
+                    Correo electrónico <span className="text-stone-mid font-normal">(opcional)</span>
                   </label>
                   <input
                     type="email"
-                    className={input}
+                    className={inputCls}
                     placeholder="juan@ejemplo.com"
                     value={customerEmail}
                     onChange={(e) => setCustomerEmail(e.target.value)}
@@ -398,21 +502,15 @@ export default function ReservationPage() {
                     onClick={() => setStep(2)}
                     className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-stone-dark font-display font-semibold text-sm text-stone-dark hover:bg-bg-warm transition-colors"
                   >
-                    <ArrowLeft className="w-4 h-4" />
-                    Volver
+                    <ArrowLeft className="w-4 h-4" /> Volver
                   </button>
                   <button
                     type="button"
-                    disabled={!customerName.trim() || !customerPhone.trim() || submitting}
+                    disabled={!customerName.trim() || !customerPhone.trim() || !!nameError || !!phoneError || submitting}
                     onClick={handleSubmit}
                     className="flex-1 flex items-center justify-center gap-2 bg-brand-orange hover:bg-brand-orange-dark disabled:opacity-50 disabled:cursor-not-allowed text-white font-display font-black text-sm px-6 py-3 rounded-2xl border-2 border-stone-dark shadow-[3px_3px_0px_#78350F] hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] transition-all"
                   >
-                    {submitting ? 'Confirmando...' : (
-                      <>
-                        Confirmar reserva
-                        <Check className="w-4 h-4" />
-                      </>
-                    )}
+                    {submitting ? 'Confirmando...' : <>Confirmar reserva <Check className="w-4 h-4" /></>}
                   </button>
                 </div>
               </div>
@@ -420,23 +518,17 @@ export default function ReservationPage() {
           </div>
         )}
 
-        {/* ─── SUCCESS ─── */}
+        {/* ─── SUCCESS ─────────────────────────────────────────────────────── */}
         {step === 'success' && reservation && (
           <div className="text-center">
             <div className="inline-flex items-center justify-center w-20 h-20 bg-brand-yellow border-4 border-stone-dark rounded-full shadow-[5px_5px_0px_#78350F] mb-6">
               <Check className="w-10 h-10 text-stone-dark" />
             </div>
-            <h1 className="font-display font-black text-3xl text-stone-dark mb-2">
-              ¡Reserva confirmada!
-            </h1>
-            <p className="text-stone-mid mb-8">
-              Te esperamos, {reservation.customerName.split(' ')[0]}.
-            </p>
+            <h1 className="font-display font-black text-3xl text-stone-dark mb-2">¡Reserva confirmada!</h1>
+            <p className="text-stone-mid mb-8">Te esperamos, {reservation.customerName.split(' ')[0]}.</p>
 
             <div className="bg-white border-4 border-stone-dark rounded-3xl p-6 shadow-[6px_6px_0px_#78350F] text-left max-w-sm mx-auto mb-8">
-              <h2 className="font-display font-bold text-stone-dark mb-4 text-base">
-                Detalles de tu reserva
-              </h2>
+              <h2 className="font-display font-bold text-stone-dark mb-4 text-base">Detalles de tu reserva</h2>
               <dl className="space-y-3">
                 {[
                   {
@@ -449,12 +541,12 @@ export default function ReservationPage() {
                   {
                     icon: <Clock className="w-4 h-4 text-brand-orange" />,
                     label: 'Hora',
-                    value: `${reservation.startTime.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })} · ${reservation.durationMinutes} min`,
+                    value: `${reservation.startTime.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true })} · ${reservation.durationMinutes} min`,
                   },
                   {
                     icon: <Users className="w-4 h-4 text-brand-orange" />,
                     label: 'Personas',
-                    value: `${reservation.partySize}`,
+                    value: String(reservation.partySize),
                   },
                   {
                     icon: <User className="w-4 h-4 text-brand-orange" />,
@@ -477,8 +569,7 @@ export default function ReservationPage() {
               to="/"
               className="inline-flex items-center gap-2 bg-brand-orange text-white font-display font-bold text-sm px-6 py-3 rounded-2xl border-2 border-stone-dark shadow-[4px_4px_0px_#78350F] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all"
             >
-              <ArrowLeft className="w-4 h-4" />
-              Volver al inicio
+              <ArrowLeft className="w-4 h-4" /> Volver al inicio
             </Link>
           </div>
         )}

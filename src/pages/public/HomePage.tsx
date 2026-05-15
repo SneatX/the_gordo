@@ -5,6 +5,14 @@ import type { Schedule } from '@/types'
 
 const DAY_NAMES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 
+const toAmPm = (hhmm: string): string => {
+  const [hStr, mStr] = hhmm.split(':')
+  const h = parseInt(hStr, 10)
+  const ampm = h >= 12 ? 'PM' : 'AM'
+  const h12 = h % 12 || 12
+  return `${h12}:${mStr} ${ampm}`
+}
+
 function groupSchedules(schedules: Schedule[]) {
   const active = schedules.filter((s) => s.isActive).sort((a, b) => a.dayOfWeek - b.dayOfWeek)
   if (active.length === 0) return []
@@ -31,7 +39,7 @@ function groupSchedules(schedules: Schedule[]) {
       g.days.length === 1 ? first :
       g.days.length === 2 ? `${first} y ${last}` :
       `${first} a ${last}`
-    return { label, hours: `${g.startTime} – ${g.endTime}` }
+    return { label, hours: `${toAmPm(g.startTime)} – ${toAmPm(g.endTime)}` }
   })
 }
 
