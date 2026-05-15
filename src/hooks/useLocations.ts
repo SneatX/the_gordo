@@ -16,9 +16,28 @@ export const useLocations = () => {
     setLoading(false)
   }, [])
 
-  useEffect(() => {
-    load()
-  }, [load])
+  useEffect(() => { load() }, [load])
 
-  return { locations, loading, error, reload: load }
+  const create = async (name: string, description: string | null): Promise<string | null> => {
+    const res = await locationController.create(name, description)
+    if (!res.ok) return res.error
+    setLocations((prev) => [...prev, res.data])
+    return null
+  }
+
+  const update = async (id: string, name: string, description: string | null): Promise<string | null> => {
+    const res = await locationController.update(id, name, description)
+    if (!res.ok) return res.error
+    setLocations((prev) => prev.map((l) => (l.id === id ? res.data : l)))
+    return null
+  }
+
+  const remove = async (id: string): Promise<string | null> => {
+    const res = await locationController.delete(id)
+    if (!res.ok) return res.error
+    setLocations((prev) => prev.filter((l) => l.id !== id))
+    return null
+  }
+
+  return { locations, loading, error, reload: load, create, update, remove }
 }
