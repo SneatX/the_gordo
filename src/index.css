@@ -25,4 +25,11 @@
 
   /* Typography */
   --font-display: "Fredoka", sans-serif;
+  --font-body: "Fredoka", sans-serif;
+}
+
+@layer base {
+  body {
+    font-family: var(--font-body);
+  }
 }
