@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, Check, Users, Calendar, Clock, User, Phone, Mail, MapPin } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, Users, Calendar, Clock, User, Phone, Mail, MapPin, ChevronDown } from 'lucide-react'
 import { reservationController } from '@/controllers/reservation.controller'
 import { useSchedules } from '@/hooks/useSchedules'
 import { useLocations } from '@/hooks/useLocations'
@@ -14,7 +14,7 @@ const inputCls = 'w-full border-2 border-stone-dark rounded-xl px-3 py-2.5 text-
 const inputErrCls = 'w-full border-2 border-brand-red rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-brand-red transition-colors bg-white'
 const labelCls = 'block font-display font-semibold text-stone-dark mb-1 text-sm'
 
-// ── helpers ─────────────────────────────────────────────────────────────────
+// ── helpers ──────────────────────────────────────────────────────────────────
 
 const toAmPm = (hhmm: string): string => {
   const [hStr, mStr] = hhmm.split(':')
@@ -33,6 +33,9 @@ const fromMinutes = (mins: number) => {
   const m = mins % 60
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
+
+const isValidEmail = (email: string) =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
 
 // ── sub-components ───────────────────────────────────────────────────────────
 
@@ -97,7 +100,69 @@ function SummaryBar({ date, time, partySize, tableNumber }: {
   )
 }
 
-// ── page ─────────────────────────────────────────────────────────────────────
+function LocationAccordion({
+  locationName,
+  tables,
+  selectedTableId,
+  onSelect,
+}: {
+  locationName: string
+  tables: RestaurantTable[]
+  selectedTableId: string
+  onSelect: (id: string) => void
+}) {
+  const [open, setOpen] = useState(true)
+  return (
+    <div className="border-2 border-stone-dark/30 rounded-2xl overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between px-4 py-3 bg-bg-warm hover:bg-bg-cream transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <MapPin className="w-4 h-4 text-brand-orange flex-shrink-0" />
+          <span className="font-display font-bold text-stone-dark text-sm">{locationName}</span>
+          <span className="text-xs text-stone-mid font-display">({tables.length})</span>
+        </div>
+        <ChevronDown
+          className={`w-4 h-4 text-stone-mid transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+      {open && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 border-t-2 border-stone-dark/20">
+          {tables.map((table) => {
+            const selected = table.id === selectedTableId
+            return (
+              <button
+                key={table.id}
+                type="button"
+                onClick={() => onSelect(table.id)}
+                className={`p-4 rounded-2xl border-2 text-left transition-all
+                  ${selected
+                    ? 'border-brand-orange bg-brand-orange/10 shadow-[3px_3px_0px_#F97316]'
+                    : 'border-stone-dark/40 bg-bg-cream hover:border-stone-dark hover:bg-bg-warm'}`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-display font-black text-stone-dark text-base">Mesa #{table.number}</span>
+                  {selected && (
+                    <span className="w-5 h-5 bg-brand-orange rounded-full flex items-center justify-center">
+                      <Check className="w-3 h-3 text-white" />
+                    </span>
+                  )}
+                </div>
+                <span className="text-stone-mid text-sm font-display">
+                  Hasta {table.capacity} {table.capacity === 1 ? 'persona' : 'personas'}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── page ──────────────────────────────────────────────────────────────────────
 
 export default function ReservationPage() {
   const { schedules } = useSchedules()
@@ -122,21 +187,20 @@ export default function ReservationPage() {
   const [customerEmail, setCustomerEmail] = useState('')
   const [nameError, setNameError] = useState('')
   const [phoneError, setPhoneError] = useState('')
+  const [emailError, setEmailError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   // success
   const [reservation, setReservation] = useState<Reservation | null>(null)
 
-  // schedule for selected date ─────────────────────────────────────────────
+  // derived ─────────────────────────────────────────────────────────────────
 
   const activeSchedule = useMemo(() => {
     if (!date) return null
     const dow = new Date(date + 'T00:00:00').getDay()
     return schedules.find((s) => s.dayOfWeek === dow && s.isActive) ?? null
   }, [date, schedules])
-
-  // 30-min time slots within schedule, honouring 2h advance ─────────────────
 
   const timeSlots = useMemo(() => {
     if (!activeSchedule || !date) return []
@@ -160,22 +224,20 @@ export default function ReservationPage() {
     return slots
   }, [activeSchedule, date])
 
-  // tables grouped by location ──────────────────────────────────────────────
-
+  // only tables with a known location
   const tableGroups = useMemo(() => {
     const map = new Map<string, { locationName: string; tables: RestaurantTable[] }>()
     for (const table of availableTables) {
-      const key = table.locationId ?? '__none__'
-      if (!map.has(key)) {
-        const name = table.locationId
-          ? (locations.find((l) => l.id === table.locationId)?.name ?? 'Otra ubicación')
-          : 'Sin ubicación'
-        map.set(key, { locationName: name, tables: [] })
-      }
-      map.get(key)!.tables.push(table)
+      if (!table.locationId) continue
+      const loc = locations.find((l) => l.id === table.locationId)
+      if (!loc) continue
+      if (!map.has(loc.id)) map.set(loc.id, { locationName: loc.name, tables: [] })
+      map.get(loc.id)!.tables.push(table)
     }
     return Array.from(map.values())
   }, [availableTables, locations])
+
+  const dateDisabled = date !== '' && !activeSchedule
 
   // handlers ────────────────────────────────────────────────────────────────
 
@@ -211,11 +273,33 @@ export default function ReservationPage() {
   const handlePhoneChange = (val: string) => {
     const clean = val.replace(/[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]/g, '')
     setCustomerPhone(clean)
-    setPhoneError(val !== clean ? 'El teléfono no debe contener letras.' : '')
+    if (val !== clean) {
+      setPhoneError('El teléfono no debe contener letras.')
+    } else if (clean.replace(/\D/g, '').length > 0 && clean.replace(/\D/g, '').length !== 10) {
+      setPhoneError('El teléfono debe tener 10 dígitos.')
+    } else {
+      setPhoneError('')
+    }
+  }
+
+  const handleEmailChange = (val: string) => {
+    setCustomerEmail(val)
+    setEmailError(val && !isValidEmail(val) ? 'Ingresa un correo electrónico válido.' : '')
   }
 
   const handleSubmit = async () => {
-    if (!date || !time || !selectedTableId || nameError || phoneError) return
+    // final validations before submit
+    const phoneDigits = customerPhone.replace(/\D/g, '')
+    if (phoneDigits.length !== 10) {
+      setPhoneError('El teléfono debe tener 10 dígitos.')
+      return
+    }
+    if (!isValidEmail(customerEmail)) {
+      setEmailError('Ingresa un correo electrónico válido.')
+      return
+    }
+    if (!date || !time || !selectedTableId || nameError || phoneError || emailError) return
+
     const startTime = new Date(`${date}T${time}`)
     setSubmitting(true)
     setSubmitError(null)
@@ -231,6 +315,12 @@ export default function ReservationPage() {
 
   const selectedTable = availableTables.find((t) => t.id === selectedTableId)
   const todayStr = new Date().toISOString().split('T')[0]
+
+  const step3Valid =
+    customerName.trim() !== '' &&
+    customerPhone.replace(/\D/g, '').length === 10 &&
+    isValidEmail(customerEmail) &&
+    !nameError && !phoneError && !emailError
 
   // ── render ────────────────────────────────────────────────────────────────
 
@@ -273,12 +363,12 @@ export default function ReservationPage() {
                 </label>
                 <input
                   type="date"
-                  className={inputCls}
+                  className={dateDisabled ? inputErrCls : inputCls}
                   value={date}
                   min={todayStr}
                   onChange={(e) => handleDateChange(e.target.value)}
                 />
-                {date && !activeSchedule && (
+                {dateDisabled && (
                   <p className="mt-1.5 text-xs font-display text-brand-red">
                     El restaurante no atiende ese día. Por favor elige otra fecha.
                   </p>
@@ -327,16 +417,22 @@ export default function ReservationPage() {
                 <div className="flex items-center gap-4">
                   <button
                     type="button"
+                    disabled={dateDisabled}
                     onClick={() => setPartySize((p) => Math.max(1, p - 1))}
-                    className="w-10 h-10 rounded-xl border-2 border-stone-dark font-display font-bold text-lg text-stone-dark hover:bg-bg-warm transition-colors shadow-[2px_2px_0px_#78350F] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px]"
+                    className="w-10 h-10 rounded-xl border-2 border-stone-dark font-display font-bold text-lg text-stone-dark hover:bg-bg-warm transition-colors shadow-[2px_2px_0px_#78350F] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-[2px_2px_0px_#78350F] disabled:translate-x-0 disabled:translate-y-0"
                   >−</button>
-                  <span className="font-display font-black text-2xl text-stone-dark w-8 text-center">{partySize}</span>
+                  <span className={`font-display font-black text-2xl w-8 text-center ${dateDisabled ? 'text-stone-mid' : 'text-stone-dark'}`}>
+                    {partySize}
+                  </span>
                   <button
                     type="button"
+                    disabled={dateDisabled}
                     onClick={() => setPartySize((p) => Math.min(20, p + 1))}
-                    className="w-10 h-10 rounded-xl border-2 border-stone-dark font-display font-bold text-lg text-stone-dark hover:bg-bg-warm transition-colors shadow-[2px_2px_0px_#78350F] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px]"
+                    className="w-10 h-10 rounded-xl border-2 border-stone-dark font-display font-bold text-lg text-stone-dark hover:bg-bg-warm transition-colors shadow-[2px_2px_0px_#78350F] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-[2px_2px_0px_#78350F] disabled:translate-x-0 disabled:translate-y-0"
                   >+</button>
-                  <span className="text-stone-mid text-sm">{partySize === 1 ? 'persona' : 'personas'}</span>
+                  <span className={`text-sm ${dateDisabled ? 'text-stone-mid opacity-50' : 'text-stone-mid'}`}>
+                    {partySize === 1 ? 'persona' : 'personas'}
+                  </span>
                 </div>
               </div>
 
@@ -366,45 +462,19 @@ export default function ReservationPage() {
             <div className="bg-white border-4 border-stone-dark rounded-3xl p-6 md:p-8 shadow-[6px_6px_0px_#78350F]">
               <h1 className="font-display font-black text-2xl text-stone-dark mb-1">Elige tu mesa</h1>
               <p className="text-stone-mid text-sm mb-6">
-                {availableTables.length} {availableTables.length === 1 ? 'mesa disponible' : 'mesas disponibles'} para ese horario.
+                {availableTables.filter((t) => t.locationId).length}{' '}
+                {availableTables.filter((t) => t.locationId).length === 1 ? 'mesa disponible' : 'mesas disponibles'} para ese horario.
               </p>
 
-              <div className="space-y-6 mb-6">
+              <div className="space-y-3 mb-6">
                 {tableGroups.map(({ locationName, tables }) => (
-                  <div key={locationName}>
-                    <div className="flex items-center gap-2 mb-3">
-                      <MapPin className="w-4 h-4 text-brand-orange flex-shrink-0" />
-                      <span className="font-display font-bold text-stone-dark text-sm">{locationName}</span>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-5">
-                      {tables.map((table) => {
-                        const selected = table.id === selectedTableId
-                        return (
-                          <button
-                            key={table.id}
-                            type="button"
-                            onClick={() => setSelectedTableId(table.id)}
-                            className={`p-4 rounded-2xl border-2 text-left transition-all
-                              ${selected
-                                ? 'border-brand-orange bg-brand-orange/10 shadow-[3px_3px_0px_#F97316]'
-                                : 'border-stone-dark/40 bg-bg-cream hover:border-stone-dark hover:bg-bg-warm'}`}
-                          >
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="font-display font-black text-stone-dark text-base">Mesa #{table.number}</span>
-                              {selected && (
-                                <span className="w-5 h-5 bg-brand-orange rounded-full flex items-center justify-center">
-                                  <Check className="w-3 h-3 text-white" />
-                                </span>
-                              )}
-                            </div>
-                            <span className="text-stone-mid text-sm font-display">
-                              Hasta {table.capacity} {table.capacity === 1 ? 'persona' : 'personas'}
-                            </span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
+                  <LocationAccordion
+                    key={locationName}
+                    locationName={locationName}
+                    tables={tables}
+                    selectedTableId={selectedTableId}
+                    onSelect={setSelectedTableId}
+                  />
                 ))}
               </div>
 
@@ -437,7 +507,7 @@ export default function ReservationPage() {
             <div className="bg-white border-4 border-stone-dark rounded-3xl p-6 md:p-8 shadow-[6px_6px_0px_#78350F]">
               <h1 className="font-display font-black text-2xl text-stone-dark mb-1">¿A nombre de quién?</h1>
               <p className="text-stone-mid text-sm mb-7">
-                Solo necesitamos tu nombre y teléfono para confirmar la reserva.
+                Completa tus datos para confirmar la reserva.
               </p>
 
               <div className="space-y-4">
@@ -468,26 +538,30 @@ export default function ReservationPage() {
                   <input
                     type="tel"
                     className={phoneError ? inputErrCls : inputCls}
-                    placeholder="300 123 4567"
+                    placeholder="3001234567"
                     value={customerPhone}
                     onChange={(e) => handlePhoneChange(e.target.value)}
                   />
-                  {phoneError && <p className="mt-1 text-xs text-brand-red font-display">{phoneError}</p>}
+                  {phoneError
+                    ? <p className="mt-1 text-xs text-brand-red font-display">{phoneError}</p>
+                    : <p className="mt-1 text-xs text-stone-mid font-display">10 dígitos, sin espacios ni guiones.</p>
+                  }
                 </div>
 
-                {/* Email */}
+                {/* Correo */}
                 <div>
                   <label className={labelCls}>
                     <Mail className="inline w-4 h-4 mr-1 mb-0.5" />
-                    Correo electrónico <span className="text-stone-mid font-normal">(opcional)</span>
+                    Correo electrónico <span className="text-brand-red">*</span>
                   </label>
                   <input
                     type="email"
-                    className={inputCls}
+                    className={emailError ? inputErrCls : inputCls}
                     placeholder="juan@ejemplo.com"
                     value={customerEmail}
-                    onChange={(e) => setCustomerEmail(e.target.value)}
+                    onChange={(e) => handleEmailChange(e.target.value)}
                   />
+                  {emailError && <p className="mt-1 text-xs text-brand-red font-display">{emailError}</p>}
                 </div>
 
                 {submitError && (
@@ -506,7 +580,7 @@ export default function ReservationPage() {
                   </button>
                   <button
                     type="button"
-                    disabled={!customerName.trim() || !customerPhone.trim() || !!nameError || !!phoneError || submitting}
+                    disabled={!step3Valid || submitting}
                     onClick={handleSubmit}
                     className="flex-1 flex items-center justify-center gap-2 bg-brand-orange hover:bg-brand-orange-dark disabled:opacity-50 disabled:cursor-not-allowed text-white font-display font-black text-sm px-6 py-3 rounded-2xl border-2 border-stone-dark shadow-[3px_3px_0px_#78350F] hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] transition-all"
                   >
