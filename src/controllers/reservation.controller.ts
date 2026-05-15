@@ -1,6 +1,7 @@
 import { reservationService } from '@/services/reservation.service'
+import { restaurantTableService } from '@/services/restaurantTable.service'
 import { scheduleService } from '@/services/schedule.service'
-import type { Result, Reservation, ReservationStatus } from '@/types'
+import type { Result, Reservation, ReservationStatus, RestaurantTable } from '@/types'
 
 const toMinutes = (time: string): number => {
   const [h, m] = time.split(':').map(Number)
@@ -105,4 +106,33 @@ export const reservationController = {
   },
 
   delete: (id: string): Promise<Result<void>> => reservationService.delete(id),
+
+  getAvailableTables: async (
+    startTime: Date,
+    durationMinutes: number,
+    minCapacity: number,
+  ): Promise<Result<RestaurantTable[]>> => {
+    const [tablesRes, reservationsRes] = await Promise.all([
+      restaurantTableService.getAll(),
+      reservationService.getAll(),
+    ])
+    if (!tablesRes.ok) return tablesRes
+    if (!reservationsRes.ok) return reservationsRes
+
+    const newStart = startTime.getTime()
+    const newEnd = newStart + durationMinutes * 60_000
+
+    const available = tablesRes.data
+      .filter((t) => t.status === 'active' && t.capacity >= minCapacity)
+      .filter((table) => {
+        return !reservationsRes.data.some((r) => {
+          if (r.tableId !== table.id || r.status !== 'active') return false
+          const existStart = r.startTime.getTime()
+          const existEnd = existStart + r.durationMinutes * 60_000
+          return newStart < existEnd && newEnd > existStart
+        })
+      })
+
+    return { ok: true, data: available }
+  },
 }
