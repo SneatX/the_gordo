@@ -1,168 +1,19 @@
 import { useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, ArrowRight, Check, Users, Calendar, Clock, User, Phone, Mail, MapPin, ChevronDown } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, Users, Calendar, Clock, User, Phone, Mail } from 'lucide-react'
 import { reservationController } from '@/controllers/reservation.controller'
 import { useSchedules } from '@/hooks/useSchedules'
 import { useLocations } from '@/hooks/useLocations'
+import StepIndicator, { type Step } from '@/components/reservation/StepIndicator'
+import SummaryBar from '@/components/reservation/SummaryBar'
+import LocationAccordion from '@/components/reservation/LocationAccordion'
+import { toAmPm, toMinutes, fromMinutes, RESERVATION_DURATION_MIN } from '@/utils/time'
+import { isValidEmail } from '@/utils/validation'
 import type { RestaurantTable, Reservation } from '@/types'
-
-const DURATION = 90
-
-type Step = 1 | 2 | 3 | 'success'
 
 const inputCls = 'w-full border-2 border-stone-dark rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-brand-orange transition-colors bg-white disabled:opacity-50 disabled:cursor-not-allowed'
 const inputErrCls = 'w-full border-2 border-brand-red rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-brand-red transition-colors bg-white'
 const labelCls = 'block font-display font-semibold text-stone-dark mb-1 text-sm'
-
-// ── helpers ──────────────────────────────────────────────────────────────────
-
-const toAmPm = (hhmm: string): string => {
-  const [hStr, mStr] = hhmm.split(':')
-  const h = parseInt(hStr, 10)
-  const h12 = h % 12 || 12
-  return `${h12}:${mStr} ${h >= 12 ? 'PM' : 'AM'}`
-}
-
-const toMinutes = (hhmm: string) => {
-  const [h, m] = hhmm.split(':').map(Number)
-  return h * 60 + m
-}
-
-const fromMinutes = (mins: number) => {
-  const h = Math.floor(mins / 60)
-  const m = mins % 60
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-}
-
-const isValidEmail = (email: string) =>
-  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
-
-// ── sub-components ───────────────────────────────────────────────────────────
-
-function StepIndicator({ current }: { current: Step }) {
-  const steps = [
-    { n: 1, label: 'Fecha y personas' },
-    { n: 2, label: 'Elige tu mesa' },
-    { n: 3, label: 'Tus datos' },
-  ]
-  return (
-    <div className="flex items-center gap-1 justify-center mb-10">
-      {steps.map(({ n, label }, i) => {
-        const done = (typeof current === 'number' && current > n) || current === 'success'
-        const active = current === n
-        return (
-          <div key={n} className="flex items-center gap-1">
-            <div className="flex flex-col items-center gap-1">
-              <div
-                className={`w-8 h-8 rounded-full border-2 border-stone-dark flex items-center justify-center font-display font-bold text-sm transition-all
-                  ${done ? 'bg-brand-orange text-white' : active ? 'bg-brand-yellow text-stone-dark' : 'bg-white text-stone-mid'}`}
-              >
-                {done ? <Check className="w-4 h-4" /> : n}
-              </div>
-              <span className={`text-xs font-display hidden sm:block ${active ? 'text-stone-dark font-semibold' : 'text-stone-mid'}`}>
-                {label}
-              </span>
-            </div>
-            {i < steps.length - 1 && (
-              <div className={`w-12 h-0.5 mb-4 ${done ? 'bg-brand-orange' : 'bg-stone-dark/20'}`} />
-            )}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-function SummaryBar({ date, time, partySize, tableNumber }: {
-  date: string; time: string; partySize: number; tableNumber?: number
-}) {
-  const dateLabel = date
-    ? new Date(date + 'T00:00:00').toLocaleDateString('es-CO', { weekday: 'long', day: '2-digit', month: 'long' })
-    : ''
-  return (
-    <div className="bg-bg-warm border-2 border-stone-dark/30 rounded-2xl px-5 py-3 flex flex-wrap gap-4 text-sm">
-      <span className="font-display text-stone-dark capitalize">
-        <Calendar className="inline w-4 h-4 mr-1 mb-0.5 text-brand-orange" />
-        {dateLabel}
-      </span>
-      <span className="font-display text-stone-dark">
-        <Clock className="inline w-4 h-4 mr-1 mb-0.5 text-brand-orange" />
-        {toAmPm(time)} · {DURATION} min
-      </span>
-      <span className="font-display text-stone-dark">
-        <Users className="inline w-4 h-4 mr-1 mb-0.5 text-brand-orange" />
-        {partySize} {partySize === 1 ? 'persona' : 'personas'}
-      </span>
-      {tableNumber != null && (
-        <span className="font-display text-stone-dark font-semibold">Mesa #{tableNumber}</span>
-      )}
-    </div>
-  )
-}
-
-function LocationAccordion({
-  locationName,
-  tables,
-  selectedTableId,
-  onSelect,
-}: {
-  locationName: string
-  tables: RestaurantTable[]
-  selectedTableId: string
-  onSelect: (id: string) => void
-}) {
-  const [open, setOpen] = useState(true)
-  return (
-    <div className="border-2 border-stone-dark/30 rounded-2xl overflow-hidden">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between px-4 py-3 bg-bg-warm hover:bg-bg-cream transition-colors"
-      >
-        <div className="flex items-center gap-2">
-          <MapPin className="w-4 h-4 text-brand-orange flex-shrink-0" />
-          <span className="font-display font-bold text-stone-dark text-sm">{locationName}</span>
-          <span className="text-xs text-stone-mid font-display">({tables.length})</span>
-        </div>
-        <ChevronDown
-          className={`w-4 h-4 text-stone-mid transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
-        />
-      </button>
-      {open && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 border-t-2 border-stone-dark/20">
-          {tables.map((table) => {
-            const selected = table.id === selectedTableId
-            return (
-              <button
-                key={table.id}
-                type="button"
-                onClick={() => onSelect(table.id)}
-                className={`p-4 rounded-2xl border-2 text-left transition-all
-                  ${selected
-                    ? 'border-brand-orange bg-brand-orange/10 shadow-[3px_3px_0px_#F97316]'
-                    : 'border-stone-dark/40 bg-bg-cream hover:border-stone-dark hover:bg-bg-warm'}`}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-display font-black text-stone-dark text-base">Mesa #{table.number}</span>
-                  {selected && (
-                    <span className="w-5 h-5 bg-brand-orange rounded-full flex items-center justify-center">
-                      <Check className="w-3 h-3 text-white" />
-                    </span>
-                  )}
-                </div>
-                <span className="text-stone-mid text-sm font-display">
-                  Hasta {table.capacity} {table.capacity === 1 ? 'persona' : 'personas'}
-                </span>
-              </button>
-            )
-          })}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── page ──────────────────────────────────────────────────────────────────────
 
 export default function ReservationPage() {
   const { schedules } = useSchedules()
@@ -194,7 +45,7 @@ export default function ReservationPage() {
   // success
   const [reservation, setReservation] = useState<Reservation | null>(null)
 
-  // derived ─────────────────────────────────────────────────────────────────
+  // ── derived ──────────────────────────────────────────────────────────────
 
   const activeSchedule = useMemo(() => {
     if (!date) return null
@@ -202,11 +53,14 @@ export default function ReservationPage() {
     return schedules.find((s) => s.dayOfWeek === dow && s.isActive) ?? null
   }, [date, schedules])
 
+  // null when no date selected OR date has no active schedule
+  const scheduleAvailable = activeSchedule !== null
+
   const timeSlots = useMemo(() => {
     if (!activeSchedule || !date) return []
     const open = toMinutes(activeSchedule.startTime)
     const close = toMinutes(activeSchedule.endTime)
-    const lastStart = close - DURATION
+    const lastStart = close - RESERVATION_DURATION_MIN
 
     const now = new Date()
     const isToday = new Date(date + 'T00:00:00').toDateString() === now.toDateString()
@@ -224,7 +78,6 @@ export default function ReservationPage() {
     return slots
   }, [activeSchedule, date])
 
-  // only tables with a known location
   const tableGroups = useMemo(() => {
     const map = new Map<string, { locationName: string; tables: RestaurantTable[] }>()
     for (const table of availableTables) {
@@ -237,9 +90,15 @@ export default function ReservationPage() {
     return Array.from(map.values())
   }, [availableTables, locations])
 
-  const dateDisabled = date !== '' && !activeSchedule
+  const tableCount = availableTables.filter((t) => t.locationId).length
 
-  // handlers ────────────────────────────────────────────────────────────────
+  const step3Valid =
+    customerName.trim() !== '' &&
+    customerPhone.replace(/\D/g, '').length === 10 &&
+    isValidEmail(customerEmail) &&
+    !nameError && !phoneError && !emailError
+
+  // ── handlers ─────────────────────────────────────────────────────────────
 
   const handleDateChange = (newDate: string) => {
     setDate(newDate)
@@ -252,7 +111,7 @@ export default function ReservationPage() {
     setSearching(true)
     setSearchError(null)
     const startTime = new Date(`${date}T${time}`)
-    const res = await reservationController.getAvailableTables(startTime, DURATION, partySize)
+    const res = await reservationController.getAvailableTables(startTime, RESERVATION_DURATION_MIN, partySize)
     setSearching(false)
     if (!res.ok) { setSearchError(res.error); return }
     if (res.data.length === 0) {
@@ -288,16 +147,9 @@ export default function ReservationPage() {
   }
 
   const handleSubmit = async () => {
-    // final validations before submit
     const phoneDigits = customerPhone.replace(/\D/g, '')
-    if (phoneDigits.length !== 10) {
-      setPhoneError('El teléfono debe tener 10 dígitos.')
-      return
-    }
-    if (!isValidEmail(customerEmail)) {
-      setEmailError('Ingresa un correo electrónico válido.')
-      return
-    }
+    if (phoneDigits.length !== 10) { setPhoneError('El teléfono debe tener 10 dígitos.'); return }
+    if (!isValidEmail(customerEmail)) { setEmailError('Ingresa un correo electrónico válido.'); return }
     if (!date || !time || !selectedTableId || nameError || phoneError || emailError) return
 
     const startTime = new Date(`${date}T${time}`)
@@ -305,7 +157,7 @@ export default function ReservationPage() {
     setSubmitError(null)
     const res = await reservationController.create(
       selectedTableId, customerName, customerEmail, customerPhone,
-      partySize, startTime, DURATION,
+      partySize, startTime, RESERVATION_DURATION_MIN,
     )
     setSubmitting(false)
     if (!res.ok) { setSubmitError(res.error); return }
@@ -315,12 +167,6 @@ export default function ReservationPage() {
 
   const selectedTable = availableTables.find((t) => t.id === selectedTableId)
   const todayStr = new Date().toISOString().split('T')[0]
-
-  const step3Valid =
-    customerName.trim() !== '' &&
-    customerPhone.replace(/\D/g, '').length === 10 &&
-    isValidEmail(customerEmail) &&
-    !nameError && !phoneError && !emailError
 
   // ── render ────────────────────────────────────────────────────────────────
 
@@ -363,12 +209,12 @@ export default function ReservationPage() {
                 </label>
                 <input
                   type="date"
-                  className={dateDisabled ? inputErrCls : inputCls}
+                  className={date && !scheduleAvailable ? inputErrCls : inputCls}
                   value={date}
                   min={todayStr}
                   onChange={(e) => handleDateChange(e.target.value)}
                 />
-                {dateDisabled && (
+                {date && !scheduleAvailable && (
                   <p className="mt-1.5 text-xs font-display text-brand-red">
                     El restaurante no atiende ese día. Por favor elige otra fecha.
                   </p>
@@ -384,13 +230,13 @@ export default function ReservationPage() {
                 <select
                   className={inputCls}
                   value={time}
-                  disabled={!activeSchedule || timeSlots.length === 0}
+                  disabled={!scheduleAvailable || timeSlots.length === 0}
                   onChange={(e) => setTime(e.target.value)}
                 >
                   <option value="">
                     {!date
                       ? 'Primero elige una fecha'
-                      : !activeSchedule
+                      : !scheduleAvailable
                       ? 'Sin horario disponible'
                       : timeSlots.length === 0
                       ? 'No hay horas disponibles (mínimo 2 h de anticipación)'
@@ -400,10 +246,10 @@ export default function ReservationPage() {
                     <option key={slot} value={slot}>{toAmPm(slot)}</option>
                   ))}
                 </select>
-                {activeSchedule && timeSlots.length > 0 && (
+                {scheduleAvailable && timeSlots.length > 0 && (
                   <p className="mt-1 text-xs text-stone-mid font-display">
-                    Horario: {toAmPm(activeSchedule.startTime)} – {toAmPm(activeSchedule.endTime)}
-                    &nbsp;· Reserva mínimo con 2 h de anticipación.
+                    Horario: {toAmPm(activeSchedule!.startTime)} – {toAmPm(activeSchedule!.endTime)}
+                    &nbsp;· Cada reserva dura 1 hora y media. Reserva con al menos 2 horas de anticipación.
                   </p>
                 )}
               </div>
@@ -417,20 +263,20 @@ export default function ReservationPage() {
                 <div className="flex items-center gap-4">
                   <button
                     type="button"
-                    disabled={dateDisabled}
+                    disabled={!scheduleAvailable}
                     onClick={() => setPartySize((p) => Math.max(1, p - 1))}
                     className="w-10 h-10 rounded-xl border-2 border-stone-dark font-display font-bold text-lg text-stone-dark hover:bg-bg-warm transition-colors shadow-[2px_2px_0px_#78350F] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-[2px_2px_0px_#78350F] disabled:translate-x-0 disabled:translate-y-0"
                   >−</button>
-                  <span className={`font-display font-black text-2xl w-8 text-center ${dateDisabled ? 'text-stone-mid' : 'text-stone-dark'}`}>
+                  <span className={`font-display font-black text-2xl w-8 text-center ${!scheduleAvailable ? 'text-stone-mid' : 'text-stone-dark'}`}>
                     {partySize}
                   </span>
                   <button
                     type="button"
-                    disabled={dateDisabled}
+                    disabled={!scheduleAvailable}
                     onClick={() => setPartySize((p) => Math.min(20, p + 1))}
                     className="w-10 h-10 rounded-xl border-2 border-stone-dark font-display font-bold text-lg text-stone-dark hover:bg-bg-warm transition-colors shadow-[2px_2px_0px_#78350F] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-[2px_2px_0px_#78350F] disabled:translate-x-0 disabled:translate-y-0"
                   >+</button>
-                  <span className={`text-sm ${dateDisabled ? 'text-stone-mid opacity-50' : 'text-stone-mid'}`}>
+                  <span className={`text-sm ${!scheduleAvailable ? 'text-stone-mid opacity-50' : 'text-stone-mid'}`}>
                     {partySize === 1 ? 'persona' : 'personas'}
                   </span>
                 </div>
@@ -444,7 +290,7 @@ export default function ReservationPage() {
 
               <button
                 type="button"
-                disabled={!date || !time || !activeSchedule || searching}
+                disabled={!date || !time || !scheduleAvailable || searching}
                 onClick={handleSearchTables}
                 className="w-full flex items-center justify-center gap-2 bg-brand-orange hover:bg-brand-orange-dark disabled:opacity-50 disabled:cursor-not-allowed text-white font-display font-black text-base px-6 py-3.5 rounded-2xl border-2 border-stone-dark shadow-[4px_4px_0px_#78350F] hover:shadow-none hover:translate-x-[4px] hover:translate-y-[4px] transition-all"
               >
@@ -462,8 +308,7 @@ export default function ReservationPage() {
             <div className="bg-white border-4 border-stone-dark rounded-3xl p-6 md:p-8 shadow-[6px_6px_0px_#78350F]">
               <h1 className="font-display font-black text-2xl text-stone-dark mb-1">Elige tu mesa</h1>
               <p className="text-stone-mid text-sm mb-6">
-                {availableTables.filter((t) => t.locationId).length}{' '}
-                {availableTables.filter((t) => t.locationId).length === 1 ? 'mesa disponible' : 'mesas disponibles'} para ese horario.
+                {tableCount} {tableCount === 1 ? 'mesa disponible' : 'mesas disponibles'} para ese horario.
               </p>
 
               <div className="space-y-3 mb-6">

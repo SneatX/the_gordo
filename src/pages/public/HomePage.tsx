@@ -1,47 +1,7 @@
 import { Link } from 'react-router-dom'
 import { UtensilsCrossed, Clock, MapPin } from 'lucide-react'
 import { useSchedules } from '@/hooks/useSchedules'
-import type { Schedule } from '@/types'
-
-const DAY_NAMES = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
-
-const toAmPm = (hhmm: string): string => {
-  const [hStr, mStr] = hhmm.split(':')
-  const h = parseInt(hStr, 10)
-  const ampm = h >= 12 ? 'PM' : 'AM'
-  const h12 = h % 12 || 12
-  return `${h12}:${mStr} ${ampm}`
-}
-
-function groupSchedules(schedules: Schedule[]) {
-  const active = schedules.filter((s) => s.isActive).sort((a, b) => a.dayOfWeek - b.dayOfWeek)
-  if (active.length === 0) return []
-
-  const groups: { days: number[]; startTime: string; endTime: string }[] = []
-  for (const s of active) {
-    const last = groups[groups.length - 1]
-    if (
-      last &&
-      last.startTime === s.startTime &&
-      last.endTime === s.endTime &&
-      last.days[last.days.length - 1] === s.dayOfWeek - 1
-    ) {
-      last.days.push(s.dayOfWeek)
-    } else {
-      groups.push({ days: [s.dayOfWeek], startTime: s.startTime, endTime: s.endTime })
-    }
-  }
-
-  return groups.map((g) => {
-    const first = DAY_NAMES[g.days[0]]
-    const last = DAY_NAMES[g.days[g.days.length - 1]]
-    const label =
-      g.days.length === 1 ? first :
-      g.days.length === 2 ? `${first} y ${last}` :
-      `${first} a ${last}`
-    return { label, hours: `${toAmPm(g.startTime)} – ${toAmPm(g.endTime)}` }
-  })
-}
+import { groupSchedules } from '@/utils/schedule'
 
 export default function HomePage() {
   const { schedules, loading: schedulesLoading } = useSchedules()
