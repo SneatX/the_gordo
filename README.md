@@ -23,7 +23,13 @@ Pages → Hooks → Controllers → Services → Supabase
 
 ```
 src/
-├── components/         # Componentes reutilizables (ProtectedRoute, etc.)
+├── components/
+│   ├── admin/          # Componentes del panel admin (AdminLayout, etc.)
+│   ├── reservation/    # Sub-componentes del flujo de reserva
+│   │   ├── StepIndicator.tsx
+│   │   ├── SummaryBar.tsx
+│   │   └── LocationAccordion.tsx
+│   └── ui/             # Componentes genéricos (Modal, ProtectedRoute, etc.)
 ├── context/            # React Context (AuthContext)
 ├── controllers/        # Lógica de negocio y validaciones
 ├── hooks/              # Bridge entre controllers/context y vistas
@@ -36,10 +42,14 @@ src/
 ├── routes/
 │   └── AppRouter.tsx   # Rutas de la aplicación
 ├── services/           # Única capa que habla con Supabase
-└── types/
-    ├── database.types.ts   # Tipos auto-generados por Supabase CLI
-    ├── domain/             # Tipos del dominio (camelCase, enums, Date)
-    └── index.ts            # Barrel exports
+├── types/
+│   ├── database.types.ts   # Tipos auto-generados por Supabase CLI
+│   ├── domain/             # Tipos del dominio (camelCase, enums, Date)
+│   └── index.ts            # Barrel exports
+└── utils/              # Helpers reutilizables
+    ├── time.ts         # toAmPm, toMinutes, fromMinutes, RESERVATION_DURATION_MIN
+    ├── validation.ts   # isValidEmail
+    └── schedule.ts     # groupSchedules
 ```
 
 ## Instalación local
@@ -109,9 +119,13 @@ Admin   → /login   → Supabase Auth      → /admin/*
 ## Módulos
 
 **Cliente (público)**
-- Home con información del restaurante
-- Formulario de reserva: nombre, teléfono, fecha, hora y número de personas
-- Confirmación de reserva
+- Home con información del restaurante y horarios de atención desde la DB
+- Formulario de reserva en 3 pasos:
+  1. Fecha y número de personas (horarios disponibles según agenda del restaurante)
+  2. Selección de mesa agrupada por ubicación (acordeones, solo mesas con capacidad suficiente y sin conflicto de horario)
+  3. Datos de contacto: nombre, teléfono (10 dígitos) y correo electrónico
+- Resumen de la reserva y confirmación
+- Página 404 con navegación de regreso
 
 **Administrador (autenticado)**
 - Gestión de mesas: crear, editar, bloquear/desbloquear
@@ -146,10 +160,9 @@ El diseño está inspirado en el logo del restaurante y en la estética de **Los
 
 | Rol | Fuente | Uso |
 |---|---|---|
-| Display / Headings | **Fredoka** (Google Fonts) | Títulos, botones, labels — evoca lo caricaturesco |
-| Body | **Inter** (sistema) | Textos corridos, tablas, datos |
+| Todo el sistema | **Fredoka** (Google Fonts) | Única fuente; pesos `font-semibold`, `font-bold` y `font-black` marcan la jerarquía |
 
-La combinación Fredoka + Inter da carácter de marca en los elementos destacados sin sacrificar legibilidad en la información densa del panel admin.
+Fredoka se carga desde Google Fonts (pesos 400–700) y se aplica globalmente al `body`. Toda jerarquía visual se logra con variaciones de peso, tamaño y color, sin cambiar de familia tipográfica.
 
 ### Estilo de componentes
 
@@ -161,3 +174,17 @@ La combinación Fredoka + Inter da carácter de marca en los elementos destacado
 ## Deploy
 
 El proyecto se despliega automáticamente en Vercel con cada push a `main`. Configurar las variables de entorno en el panel de Vercel antes del primer deploy.
+
+## Credenciales de administrador
+
+| Campo | Valor |
+|---|---|
+| Email | `admin@mail.com` |
+| Contraseña | `securepwd` |
+
+> ⚠️ Credenciales de entorno de desarrollo/demo. No usar en producción.
+
+## Autores
+
+- **Santiago Alexander Ospina Pabón**
+- **Emily Julieth Nieves Badillo**
