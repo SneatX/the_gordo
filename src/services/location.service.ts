@@ -29,8 +29,9 @@ export const locationService = {
       .from('locations')
       .insert({ name, description })
       .select()
-      .single()
+      .maybeSingle()
     if (error) return { ok: false, error: error.message }
+    if (!data) return { ok: false, error: 'No se pudo crear la ubicación (verificá los permisos RLS)' }
     return { ok: true, data: toDomain(data) }
   },
 
@@ -44,8 +45,9 @@ export const locationService = {
       .update({ name, description })
       .eq('id', id)
       .select()
-      .single()
+      .maybeSingle()
     if (error) return { ok: false, error: error.message }
+    if (!data) return { ok: false, error: 'No se pudo actualizar la ubicación (verificá los permisos RLS)' }
     return { ok: true, data: toDomain(data) }
   },
 

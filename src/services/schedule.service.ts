@@ -38,8 +38,9 @@ export const scheduleService = {
       .from('schedules')
       .insert({ day_of_week: dayOfWeek, start_time: startTime, end_time: endTime, is_active: isActive })
       .select()
-      .single()
+      .maybeSingle()
     if (error) return { ok: false, error: error.message }
+    if (!data) return { ok: false, error: 'No se pudo crear el horario (verificá los permisos RLS)' }
     return { ok: true, data: toDomain(data) }
   },
 
@@ -55,8 +56,9 @@ export const scheduleService = {
       .update({ day_of_week: dayOfWeek, start_time: startTime, end_time: endTime, is_active: isActive })
       .eq('id', id)
       .select()
-      .single()
+      .maybeSingle()
     if (error) return { ok: false, error: error.message }
+    if (!data) return { ok: false, error: 'No se pudo actualizar el horario (verificá los permisos RLS)' }
     return { ok: true, data: toDomain(data) }
   },
 

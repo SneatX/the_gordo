@@ -72,13 +72,15 @@ export const reservationService = {
         duration_minutes: durationMinutes,
       })
       .select()
-      .single()
+      .maybeSingle()
     if (error) return { ok: false, error: error.message }
+    if (!data) return { ok: false, error: 'No se pudo crear la reserva (verificá los permisos RLS)' }
     return { ok: true, data: toDomain(data) }
   },
 
   update: async (
     id: string,
+    tableId: string,
     customerName: string,
     customerEmail: string,
     customerPhone: string,
@@ -90,6 +92,7 @@ export const reservationService = {
     const { data, error } = await supabase
       .from('reservations')
       .update({
+        table_id: tableId,
         customer_name: customerName,
         customer_email: customerEmail,
         customer_phone: customerPhone,
@@ -100,8 +103,9 @@ export const reservationService = {
       })
       .eq('id', id)
       .select()
-      .single()
+      .maybeSingle()
     if (error) return { ok: false, error: error.message }
+    if (!data) return { ok: false, error: 'No se pudo actualizar la reserva (verificá los permisos RLS)' }
     return { ok: true, data: toDomain(data) }
   },
 

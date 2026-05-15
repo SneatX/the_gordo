@@ -48,8 +48,9 @@ export const restaurantTableService = {
       .from('restaurant_tables')
       .insert({ number, capacity, location_id: locationId })
       .select()
-      .single()
+      .maybeSingle()
     if (error) return { ok: false, error: error.message }
+    if (!data) return { ok: false, error: 'No se pudo crear la mesa (verificá los permisos RLS)' }
     return { ok: true, data: toDomain(data) }
   },
 
@@ -65,8 +66,9 @@ export const restaurantTableService = {
       .update({ number, capacity, location_id: locationId, status })
       .eq('id', id)
       .select()
-      .single()
+      .maybeSingle()
     if (error) return { ok: false, error: error.message }
+    if (!data) return { ok: false, error: 'No se pudo actualizar la mesa (verificá los permisos RLS)' }
     return { ok: true, data: toDomain(data) }
   },
 
