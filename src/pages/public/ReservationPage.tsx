@@ -461,6 +461,7 @@ export default function ReservationPage() {
                     type="tel"
                     className={phoneError ? inputErrCls : inputCls}
                     placeholder="3001234567"
+                    maxLength={10}
                     value={customerPhone}
                     onChange={(e) => handlePhoneChange(e.target.value)}
                   />

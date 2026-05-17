@@ -452,6 +452,8 @@ export default function ReservationPage() {
               <div>
                 <label className={label}>Teléfono</label>
                 <input
+                  type="tel"
+                  maxLength={10}
                   className={input}
                   value={form.customerPhone}
                   onChange={(e) => setForm({ ...form, customerPhone: e.target.value })}
