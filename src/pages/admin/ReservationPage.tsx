@@ -1,15 +1,18 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Plus, Pencil, Trash2, Search, X, ArrowUp, ArrowDown } from 'lucide-react'
+import { Plus, Pencil, Ban, Search, X, ArrowUp, ArrowDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { useReservationsAdmin } from '@/hooks/useReservationsAdmin'
 import { useRestaurantTables } from '@/hooks/useRestaurantTables'
+import { useSchedules } from '@/hooks/useSchedules'
 import { useDebounce } from '@/hooks/useDebounce'
 import Modal from '@/components/ui/Modal'
 import TableSkeleton from '@/components/ui/TableSkeleton'
 import TablePagination from '@/components/ui/TablePagination'
 import CustomSelect from '@/components/ui/CustomSelect'
 import DateInput from '@/components/ui/DateInput'
+import Tooltip from '@/components/ui/Tooltip'
+import { toAmPm, toMinutes, fromMinutes, RESERVATION_DURATION_MIN } from '@/utils/time'
 import type { Reservation, ReservationStatus } from '@/types'
 
 const EMPTY = {
@@ -18,7 +21,8 @@ const EMPTY = {
   customerEmail: '',
   customerPhone: '',
   partySize: '2',
-  startTime: '',
+  date: '',
+  time: '',
   durationMinutes: '90',
   status: 'active' as ReservationStatus,
 }
@@ -42,13 +46,14 @@ type StatusFilter = ReservationStatus | 'all'
 
 export default function ReservationPage() {
   const { tables } = useRestaurantTables()
+  const { schedules } = useSchedules()
 
   const [editing, setEditing] = useState<Reservation | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
-  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [cancelTarget, setCancelTarget] = useState<Reservation | null>(null)
   const [form, setForm] = useState(EMPTY)
   const [saving, setSaving] = useState(false)
-  const [deleting, setDeleting] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
 
   // Filters — initialize from URL params (used by admin stats links)
   const [searchParams] = useSearchParams()
@@ -67,9 +72,29 @@ export default function ReservationPage() {
     setPage(1)
   }, [searchParams])
 
+  const formActiveSchedule = useMemo(() => {
+    if (!form.date) return null
+    const dow = new Date(form.date + 'T00:00:00').getDay()
+    return schedules.find((s) => s.dayOfWeek === dow && s.isActive) ?? null
+  }, [form.date, schedules])
+
+  const formTimeSlots = useMemo(() => {
+    if (!formActiveSchedule || !form.date) return []
+    const open = toMinutes(formActiveSchedule.startTime)
+    const close = toMinutes(formActiveSchedule.endTime)
+    const lastStart = close - RESERVATION_DURATION_MIN
+    const slots: string[] = []
+    for (let m = open; m <= lastStart; m += 30) {
+      slots.push(fromMinutes(m))
+    }
+    // Keep current time in list when editing even if outside generated slots
+    if (form.time && !slots.includes(form.time)) slots.unshift(form.time)
+    return slots
+  }, [formActiveSchedule, form.date, form.time])
+
   const debouncedSearch = useDebounce(search, 300)
 
-  const { reservations, total, loading, create, update, remove } = useReservationsAdmin(
+  const { reservations, total, loading, create, update } = useReservationsAdmin(
     { search: debouncedSearch, status: statusFilter, dateFrom, dateTo, sortOrder },
     page,
     pageSize,
@@ -92,13 +117,15 @@ export default function ReservationPage() {
 
   const openEdit = (r: Reservation) => {
     setEditing(r)
+    const iso = r.startTime.toISOString().slice(0, 16)
     setForm({
       tableId: r.tableId,
       customerName: r.customerName,
       customerEmail: r.customerEmail,
       customerPhone: r.customerPhone,
       partySize: String(r.partySize),
-      startTime: r.startTime.toISOString().slice(0, 16),
+      date: iso.slice(0, 10),
+      time: iso.slice(11, 16),
       durationMinutes: String(r.durationMinutes),
       status: r.status,
     })
@@ -114,7 +141,7 @@ export default function ReservationPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
-    const startDate = new Date(form.startTime)
+    const startDate = new Date(`${form.date}T${form.time}`)
     const err = editing
       ? await update(
           editing.id, form.tableId, form.customerName, form.customerEmail,
@@ -134,15 +161,19 @@ export default function ReservationPage() {
     }
   }
 
-  const handleDelete = async () => {
-    if (!deleteId) return
-    setDeleting(true)
-    const err = await remove(deleteId)
-    setDeleting(false)
+  const handleCancel = async () => {
+    if (!cancelTarget) return
+    setCancelling(true)
+    const r = cancelTarget
+    const err = await update(
+      r.id, r.tableId, r.customerName, r.customerEmail,
+      r.customerPhone, r.partySize, r.startTime, r.durationMinutes, 'cancelled',
+    )
+    setCancelling(false)
     if (err) toast.error(err)
     else {
-      toast.success('Reserva eliminada')
-      setDeleteId(null)
+      toast.success('Reserva cancelada')
+      setCancelTarget(null)
     }
   }
 
@@ -284,18 +315,24 @@ export default function ReservationPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1 justify-end">
-                      <button
-                        onClick={() => openEdit(r)}
-                        className="p-1.5 rounded-lg hover:bg-brand-yellow/40 text-stone-dark transition-colors"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => setDeleteId(r.id)}
-                        className="p-1.5 rounded-lg hover:bg-brand-red/10 text-brand-red transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <Tooltip text="Editar reserva">
+                        <button
+                          onClick={() => openEdit(r)}
+                          className="p-1.5 rounded-lg hover:bg-brand-yellow/40 text-stone-dark transition-colors"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                      </Tooltip>
+                      {r.status === 'active' && (
+                        <Tooltip text="Cancelar reserva">
+                          <button
+                            onClick={() => setCancelTarget(r)}
+                            className="p-1.5 rounded-lg hover:bg-brand-red/10 text-brand-red transition-colors"
+                          >
+                            <Ban className="w-4 h-4" />
+                          </button>
+                        </Tooltip>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -322,6 +359,61 @@ export default function ReservationPage() {
           onClose={closeModal}
         >
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Fecha */}
+            <div>
+              <label className={label}>Fecha</label>
+              <DateInput
+                value={form.date}
+                min={new Date().toISOString().split('T')[0]}
+                onChange={(v) => setForm({ ...form, date: v, time: '' })}
+                required
+              />
+              {form.date && !formActiveSchedule && (
+                <p className="mt-1 text-xs text-brand-red font-display">
+                  El restaurante no atiende ese día.
+                </p>
+              )}
+            </div>
+
+            {/* Hora */}
+            <div>
+              <label className={label}>Hora</label>
+              <CustomSelect
+                value={form.time}
+                onChange={(v) => setForm({ ...form, time: v })}
+                disabled={!form.date || !formActiveSchedule || formTimeSlots.length === 0}
+                placeholder={
+                  !form.date
+                    ? 'Primero elige una fecha'
+                    : !formActiveSchedule
+                      ? 'Sin horario disponible'
+                      : formTimeSlots.length === 0
+                        ? 'Sin horas disponibles'
+                        : 'Selecciona una hora'
+                }
+                options={formTimeSlots.map((slot) => ({ value: slot, label: toAmPm(slot) }))}
+              />
+              {formActiveSchedule && (
+                <p className="mt-1 text-xs text-stone-mid font-display">
+                  Horario: {toAmPm(formActiveSchedule.startTime)} – {toAmPm(formActiveSchedule.endTime)}
+                </p>
+              )}
+            </div>
+
+            {/* Personas */}
+            <div>
+              <label className={label}>Personas</label>
+              <input
+                type="number"
+                min={1}
+                className={input}
+                value={form.partySize}
+                onChange={(e) => setForm({ ...form, partySize: e.target.value })}
+                required
+              />
+            </div>
+
+            {/* Mesa */}
             <div>
               <label className={label}>Mesa</label>
               <CustomSelect
@@ -334,8 +426,10 @@ export default function ReservationPage() {
                 }))}
               />
             </div>
+
+            {/* Cliente */}
             <div>
-              <label className={label}>Cliente</label>
+              <label className={label}>Nombre del cliente</label>
               <input
                 className={input}
                 value={form.customerName}
@@ -344,6 +438,7 @@ export default function ReservationPage() {
                 autoFocus
               />
             </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className={label}>Email</label>
@@ -363,41 +458,7 @@ export default function ReservationPage() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={label}>Personas</label>
-                <input
-                  type="number"
-                  min={1}
-                  className={input}
-                  value={form.partySize}
-                  onChange={(e) => setForm({ ...form, partySize: e.target.value })}
-                  required
-                />
-              </div>
-              <div>
-                <label className={label}>Duración (min)</label>
-                <input
-                  type="number"
-                  min={15}
-                  step={15}
-                  className={`${input} disabled:opacity-60 disabled:cursor-not-allowed`}
-                  value={form.durationMinutes}
-                  onChange={(e) => setForm({ ...form, durationMinutes: e.target.value })}
-                  disabled={!!editing}
-                  required
-                />
-              </div>
-            </div>
-            <div>
-              <label className={label}>Fecha y hora</label>
-              <DateInput
-                type="datetime-local"
-                value={form.startTime}
-                onChange={(v) => setForm({ ...form, startTime: v })}
-                required
-              />
-            </div>
+
             {editing && (
               <div>
                 <label className={label}>Estado</label>
@@ -432,25 +493,26 @@ export default function ReservationPage() {
         </Modal>
       )}
 
-      {/* Delete confirm */}
-      {deleteId && (
-        <Modal title="Eliminar reserva" onClose={() => setDeleteId(null)}>
-          <p className="text-sm text-stone-dark mb-6">
-            ¿Estás seguro? Esta acción no se puede deshacer.
+      {/* Cancel confirm */}
+      {cancelTarget && (
+        <Modal title="Cancelar reserva" onClose={() => setCancelTarget(null)}>
+          <p className="text-sm text-stone-dark mb-1">
+            ¿Cancelar la reserva de <span className="font-semibold">{cancelTarget.customerName}</span>?
           </p>
+          <p className="text-xs text-stone-mid mb-6">Esta acción cambiará el estado a Cancelada.</p>
           <div className="flex gap-3">
             <button
-              onClick={() => setDeleteId(null)}
+              onClick={() => setCancelTarget(null)}
               className="flex-1 py-2 rounded-xl border-2 border-stone-dark font-display font-medium text-sm text-stone-dark hover:bg-bg-warm transition-colors"
             >
-              Cancelar
+              Volver
             </button>
             <button
-              onClick={handleDelete}
-              disabled={deleting}
+              onClick={handleCancel}
+              disabled={cancelling}
               className="flex-1 py-2 rounded-xl border-2 border-stone-dark bg-brand-red hover:bg-brand-red-dark disabled:opacity-50 font-display font-semibold text-sm text-white shadow-[3px_3px_0px_#78350F] hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] transition-all"
             >
-              {deleting ? 'Eliminando...' : 'Eliminar'}
+              {cancelling ? 'Cancelando...' : 'Cancelar reserva'}
             </button>
           </div>
         </Modal>

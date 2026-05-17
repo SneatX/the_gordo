@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Plus, Pencil, Trash2, ArrowUp, ArrowDown } from 'lucide-react'
+import Tooltip from '@/components/ui/Tooltip'
 import { toast } from 'sonner'
 import { useLocations } from '@/hooks/useLocations'
 import { usePagination } from '@/hooks/usePagination'
@@ -149,18 +150,22 @@ export default function LocationPage() {
                   <td className="px-4 py-3 text-sm text-stone-mid">{loc.description ?? '—'}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1 justify-end">
-                      <button
-                        onClick={() => openEdit(loc)}
-                        className="p-1.5 rounded-lg hover:bg-brand-yellow/40 text-stone-dark transition-colors"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => setDeleteId(loc.id)}
-                        className="p-1.5 rounded-lg hover:bg-brand-red/10 text-brand-red transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <Tooltip text="Editar ubicación">
+                        <button
+                          onClick={() => openEdit(loc)}
+                          className="p-1.5 rounded-lg hover:bg-brand-yellow/40 text-stone-dark transition-colors"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                      </Tooltip>
+                      <Tooltip text="Eliminar ubicación">
+                        <button
+                          onClick={() => setDeleteId(loc.id)}
+                          className="p-1.5 rounded-lg hover:bg-brand-red/10 text-brand-red transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </Tooltip>
                     </div>
                   </td>
                 </tr>

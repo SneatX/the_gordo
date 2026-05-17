@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Plus, Pencil, Trash2, X, ArrowUp, ArrowDown } from 'lucide-react'
+import Tooltip from '@/components/ui/Tooltip'
 import { toast } from 'sonner'
 import { useTablesAdmin } from '@/hooks/useTablesAdmin'
 import { useLocations } from '@/hooks/useLocations'
@@ -204,18 +205,22 @@ export default function RestaurantTablePage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1 justify-end">
-                      <button
-                        onClick={() => openEdit(t)}
-                        className="p-1.5 rounded-lg hover:bg-brand-yellow/40 text-stone-dark transition-colors"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => setDeleteId(t.id)}
-                        className="p-1.5 rounded-lg hover:bg-brand-red/10 text-brand-red transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      <Tooltip text="Editar mesa">
+                        <button
+                          onClick={() => openEdit(t)}
+                          className="p-1.5 rounded-lg hover:bg-brand-yellow/40 text-stone-dark transition-colors"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                      </Tooltip>
+                      <Tooltip text="Eliminar mesa">
+                        <button
+                          onClick={() => setDeleteId(t.id)}
+                          className="p-1.5 rounded-lg hover:bg-brand-red/10 text-brand-red transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </Tooltip>
                     </div>
                   </td>
                 </tr>
