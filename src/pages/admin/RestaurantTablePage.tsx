@@ -141,7 +141,10 @@ export default function RestaurantTablePage() {
       {loading ? (
         <TableSkeleton cols={5} />
       ) : (
-        <div className="bg-white border-4 border-stone-dark rounded-2xl overflow-hidden shadow-[4px_4px_0px_#78350F]">
+        <div
+          key={`${statusFilter}-${page}-${pageSize}`}
+          className="bg-white border-4 border-stone-dark rounded-2xl overflow-hidden shadow-[4px_4px_0px_#78350F] animate-fade-in"
+        >
           <table className="w-full">
             <thead className="bg-brand-orange">
               <tr>

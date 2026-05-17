@@ -225,7 +225,10 @@ export default function ReservationPage() {
       {loading ? (
         <TableSkeleton cols={7} />
       ) : (
-        <div className="bg-white border-4 border-stone-dark rounded-2xl overflow-hidden shadow-[4px_4px_0px_#78350F]">
+        <div
+          key={`${debouncedSearch}-${statusFilter}-${dateFrom}-${dateTo}-${sortOrder}-${page}-${pageSize}`}
+          className="bg-white border-4 border-stone-dark rounded-2xl overflow-hidden shadow-[4px_4px_0px_#78350F] animate-fade-in"
+        >
           <table className="w-full">
             <thead className="bg-brand-orange">
               <tr>
