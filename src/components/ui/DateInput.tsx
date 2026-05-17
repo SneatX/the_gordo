@@ -1,16 +1,7 @@
 import { Calendar, CalendarClock } from 'lucide-react'
+import type { DateInputProps } from '@/components/ui/types'
 
-interface Props {
-  type?: 'date' | 'datetime-local'
-  value: string
-  onChange: (value: string) => void
-  required?: boolean
-  error?: boolean
-  min?: string
-  className?: string
-}
-
-export default function DateInput({ type = 'date', value, onChange, required, error, min, className = '' }: Props) {
+export default function DateInput({ type = 'date', value, onChange, required, error, min, className = '' }: DateInputProps) {
   return (
     <div className={`relative ${className}`}>
       <input

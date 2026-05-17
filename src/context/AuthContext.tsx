@@ -2,14 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { authService } from '@/services/auth.service'
-
-interface AuthContextValue {
-  user: User | null
-  session: Session | null
-  loading: boolean
-  signIn: (email: string, password: string) => Promise<string | null>
-  signOut: () => Promise<void>
-}
+import type { AuthContextValue } from '@/types'
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 

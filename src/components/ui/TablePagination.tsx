@@ -1,14 +1,6 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import CustomSelect from './CustomSelect'
-
-interface Props {
-  total: number
-  page: number
-  pageSize: number
-  onPageChange: (page: number) => void
-  onPageSizeChange: (size: number) => void
-  loading?: boolean
-}
+import type { TablePaginationProps } from '@/components/ui/types'
 
 const PAGE_SIZES = [5, 10, 15, 20]
 
@@ -22,7 +14,7 @@ function pageNumbers(current: number, total: number): (number | '…')[] {
   return pages
 }
 
-export default function TablePagination({ total, page, pageSize, onPageChange, onPageSizeChange, loading }: Props) {
+export default function TablePagination({ total, page, pageSize, onPageChange, onPageSizeChange, loading }: TablePaginationProps) {
   if (loading) {
     return (
       <div className="flex flex-wrap items-center justify-between gap-4 mt-4 animate-pulse">

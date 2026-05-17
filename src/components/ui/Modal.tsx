@@ -1,11 +1,6 @@
 import { X } from 'lucide-react'
 import Tooltip from '@/components/ui/Tooltip'
-
-interface ModalProps {
-  title: string
-  onClose: () => void
-  children: React.ReactNode
-}
+import type { ModalProps } from '@/components/ui/types'
 
 export default function Modal({ title, onClose, children }: ModalProps) {
   return (

@@ -1,11 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
-
-interface AdminStats {
-  totalReservations: number
-  todayReservations: number
-  activeTables: number
-}
+import type { AdminStats } from '@/types'
 
 export function useAdminStats() {
   const [stats, setStats] = useState<AdminStats>({

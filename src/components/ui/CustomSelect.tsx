@@ -1,19 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronDown } from 'lucide-react'
-
-export interface SelectOption {
-  value: string
-  label: string
-}
-
-interface Props {
-  value: string
-  onChange: (value: string) => void
-  options: SelectOption[]
-  placeholder?: string
-  disabled?: boolean
-}
+import type { CustomSelectProps } from '@/components/ui/types'
+export type { SelectOption } from '@/components/ui/types'
 
 export default function CustomSelect({
   value,
@@ -21,7 +10,7 @@ export default function CustomSelect({
   options,
   placeholder = 'Seleccionar',
   disabled = false,
-}: Props) {
+}: CustomSelectProps) {
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState<{ left: number; width: number; top?: number; bottom?: number }>({ left: 0, width: 0 })
   const btnRef = useRef<HTMLButtonElement>(null)

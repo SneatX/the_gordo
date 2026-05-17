@@ -1,13 +1,6 @@
 import { useState } from 'react'
 import { MapPin, ChevronDown, Check } from 'lucide-react'
-import type { RestaurantTable } from '@/types'
-
-interface LocationAccordionProps {
-  locationName: string
-  tables: RestaurantTable[]
-  selectedTableId: string
-  onSelect: (id: string) => void
-}
+import type { LocationAccordionProps } from '@/components/reservation/types'
 
 export default function LocationAccordion({
   locationName,

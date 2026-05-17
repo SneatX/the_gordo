@@ -1,12 +1,6 @@
 import { Calendar, Clock, Users } from 'lucide-react'
 import { toAmPm, RESERVATION_DURATION_MIN } from '@/utils/time'
-
-interface SummaryBarProps {
-  date: string
-  time: string
-  partySize: number
-  tableNumber?: number
-}
+import type { SummaryBarProps } from '@/components/reservation/types'
 
 export default function SummaryBar({ date, time, partySize, tableNumber }: SummaryBarProps) {
   const dateLabel = date

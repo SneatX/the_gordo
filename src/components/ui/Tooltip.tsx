@@ -1,13 +1,8 @@
-import { type ReactNode, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import type { TooltipProps } from '@/components/ui/types'
 
-interface Props {
-  text: string
-  children: ReactNode
-  side?: 'top' | 'bottom' | 'left' | 'right'
-}
-
-export default function Tooltip({ text, children, side = 'top' }: Props) {
+export default function Tooltip({ text, children, side = 'top' }: TooltipProps) {
   const ref = useRef<HTMLDivElement>(null)
   const [visible, setVisible] = useState(false)
   const [coords, setCoords] = useState({ top: 0, left: 0 })

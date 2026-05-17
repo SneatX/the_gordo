@@ -1,6 +1,6 @@
 import { Check } from 'lucide-react'
-
-export type Step = 1 | 2 | 3 | 'success'
+import type { StepIndicatorProps } from '@/components/reservation/types'
+export type { Step } from '@/components/reservation/types'
 
 const STEPS = [
   { n: 1, label: 'Fecha y personas' },
@@ -8,7 +8,7 @@ const STEPS = [
   { n: 3, label: 'Tus datos' },
 ] as const
 
-export default function StepIndicator({ current }: { current: Step }) {
+export default function StepIndicator({ current }: StepIndicatorProps) {
   return (
     <div className="flex items-center gap-1 justify-center mb-10">
       {STEPS.map(({ n, label }, i) => {

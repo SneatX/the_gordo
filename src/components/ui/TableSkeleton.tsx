@@ -1,9 +1,6 @@
-interface Props {
-  cols: number
-  rows?: number
-}
+import type { TableSkeletonProps } from '@/components/ui/types'
 
-export default function TableSkeleton({ cols, rows = 5 }: Props) {
+export default function TableSkeleton({ cols, rows = 5 }: TableSkeletonProps) {
   return (
     <div className="bg-white border-4 border-stone-dark rounded-2xl overflow-hidden shadow-[4px_4px_0px_#78350F]">
       <div className="bg-brand-orange/60 h-[46px] animate-pulse" />
