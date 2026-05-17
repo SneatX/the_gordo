@@ -23,7 +23,7 @@ export default function CustomSelect({
   disabled = false,
 }: Props) {
   const [open, setOpen] = useState(false)
-  const [pos, setPos] = useState({ top: 0, left: 0, width: 0 })
+  const [pos, setPos] = useState<{ left: number; width: number; top?: number; bottom?: number }>({ left: 0, width: 0 })
   const btnRef = useRef<HTMLButtonElement>(null)
   const dropRef = useRef<HTMLDivElement>(null)
 
@@ -33,7 +33,13 @@ export default function CustomSelect({
     if (disabled) return
     if (!open && btnRef.current) {
       const r = btnRef.current.getBoundingClientRect()
-      setPos({ top: r.bottom + 4, left: r.left, width: r.width })
+      const spaceBelow = window.innerHeight - r.bottom
+      if (spaceBelow < 220) {
+        // open upward
+        setPos({ bottom: window.innerHeight - r.top + 4, left: r.left, width: r.width })
+      } else {
+        setPos({ top: r.bottom + 4, left: r.left, width: r.width })
+      }
     }
     setOpen((v) => !v)
   }
@@ -83,7 +89,7 @@ export default function CustomSelect({
         createPortal(
           <div
             ref={dropRef}
-            style={{ top: pos.top, left: pos.left, width: pos.width }}
+            style={{ top: pos.top, bottom: pos.bottom, left: pos.left, width: pos.width }}
             className="fixed z-[300] bg-white border-2 border-stone-dark rounded-xl shadow-[4px_4px_0px_#78350F] overflow-hidden max-h-60 overflow-y-auto animate-fade-in"
           >
             {options.map((opt) => (
