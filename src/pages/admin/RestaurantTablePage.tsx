@@ -104,7 +104,7 @@ export default function RestaurantTablePage() {
     <div className="space-y-6">
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-display text-3xl font-bold text-stone-dark">Mesas</h1>
         <button
           onClick={openCreate}
@@ -160,7 +160,8 @@ export default function RestaurantTablePage() {
           key={`${statusFilter}-${sortOrder}-${page}-${pageSize}`}
           className="bg-white border-4 border-stone-dark rounded-2xl overflow-hidden shadow-[4px_4px_0px_#78350F] animate-fade-in"
         >
-          <table className="w-full">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[480px]">
             <thead className="bg-brand-orange">
               <tr>
                 <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">
@@ -220,6 +221,7 @@ export default function RestaurantTablePage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 

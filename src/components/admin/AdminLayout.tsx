@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom'
-import { CalendarDays, LayoutGrid, Clock, MapPin, LogOut } from 'lucide-react'
+import { CalendarDays, LayoutGrid, Clock, MapPin, LogOut, Menu, X } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { useAdminStats } from '@/hooks/useAdminStats'
 
@@ -26,6 +27,7 @@ export default function AdminLayout() {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
   const { totalReservations, todayReservations, activeTables } = useAdminStats()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const todayISO = new Date().toISOString().split('T')[0]
 
@@ -34,16 +36,44 @@ export default function AdminLayout() {
     navigate('/login', { replace: true })
   }
 
+  const closeSidebar = () => setSidebarOpen(false)
+
   return (
     <div className="flex min-h-screen bg-bg-cream">
 
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-40 md:hidden"
+          onClick={closeSidebar}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 shrink-0 flex flex-col bg-white border-r-4 border-stone-dark">
+      <aside className={[
+        'fixed inset-y-0 left-0 z-50 w-64 flex flex-col bg-white border-r-4 border-stone-dark overflow-y-auto',
+        'transition-transform duration-300 ease-in-out',
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full',
+        'md:relative md:translate-x-0 md:shrink-0',
+      ].join(' ')}>
 
         {/* Brand */}
-        <div className="px-6 py-6 border-b-4 border-stone-dark">
-          <p className="font-display text-2xl font-bold text-brand-orange leading-none">The Gordo</p>
-          <p className="font-display text-sm text-stone-dark font-medium">Comidas Rápidas</p>
+        <div className="px-4 py-4 border-b-4 border-stone-dark flex items-center gap-3">
+          <img
+            src="/logo.jpg"
+            alt="The Gordo"
+            className="w-10 h-10 rounded-xl border-2 border-stone-dark object-cover shrink-0"
+          />
+          <div className="min-w-0">
+            <p className="font-display text-xl font-bold text-brand-orange leading-none truncate">The Gordo</p>
+            <p className="font-display text-xs text-stone-dark font-medium">Comidas Rápidas</p>
+          </div>
+          <button
+            onClick={closeSidebar}
+            className="ml-auto p-1 rounded-lg hover:bg-bg-warm transition-colors md:hidden shrink-0"
+          >
+            <X className="w-4 h-4 text-stone-dark" />
+          </button>
         </div>
 
         {/* Nav */}
@@ -52,6 +82,7 @@ export default function AdminLayout() {
             <NavLink
               key={to}
               to={to}
+              onClick={closeSidebar}
               className={({ isActive }) =>
                 `flex items-center gap-3 px-4 py-2.5 rounded-xl font-display font-medium text-sm transition-all
                 ${isActive
@@ -107,7 +138,18 @@ export default function AdminLayout() {
       </aside>
 
       {/* Content */}
-      <main className="flex-1 overflow-y-auto p-8">
+      <main className="flex-1 overflow-y-auto p-4 md:p-8 min-w-0">
+        {/* Mobile top bar */}
+        <div className="flex items-center gap-3 mb-5 md:hidden">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="p-2 rounded-xl border-2 border-stone-dark bg-white shadow-[2px_2px_0px_#78350F] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all"
+          >
+            <Menu className="w-5 h-5 text-stone-dark" />
+          </button>
+          <img src="/logo.jpg" alt="The Gordo" className="w-8 h-8 rounded-lg border-2 border-stone-dark object-cover" />
+          <p className="font-display text-lg font-bold text-brand-orange">The Gordo</p>
+        </div>
         <Outlet />
       </main>
     </div>
