@@ -14,6 +14,7 @@ export default function Tooltip({ text, children, side = 'top' }: Props) {
 
   const show = () => {
     if (!ref.current) return
+    if (!window.matchMedia('(hover: hover)').matches) return
     const r = ref.current.getBoundingClientRect()
     const GAP = 8
 
