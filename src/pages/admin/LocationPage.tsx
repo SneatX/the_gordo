@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Plus, Pencil, Trash2, ArrowUp, ArrowDown } from 'lucide-react'
 import Tooltip from '@/components/ui/Tooltip'
+import { translateError } from '@/utils/errors'
 import { toast } from 'sonner'
 import { useLocations } from '@/hooks/useLocations'
 import { usePagination } from '@/hooks/usePagination'
@@ -60,7 +61,7 @@ export default function LocationPage() {
       ? await update(editing.id, form.name, form.description || null)
       : await create(form.name, form.description || null)
     setSaving(false)
-    if (err) toast.error(err)
+    if (err) toast.error(translateError(err))
     else {
       toast.success(editing ? 'Ubicación actualizada' : 'Ubicación creada')
       closeModal()
@@ -72,7 +73,7 @@ export default function LocationPage() {
     setDeleting(true)
     const err = await remove(deleteId)
     setDeleting(false)
-    if (err) toast.error(err)
+    if (err) toast.error(translateError(err))
     else {
       toast.success('Ubicación eliminada')
       setDeleteId(null)

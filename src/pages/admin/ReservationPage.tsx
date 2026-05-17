@@ -13,6 +13,7 @@ import CustomSelect from '@/components/ui/CustomSelect'
 import DateInput from '@/components/ui/DateInput'
 import Tooltip from '@/components/ui/Tooltip'
 import { toAmPm, toMinutes, fromMinutes, RESERVATION_DURATION_MIN } from '@/utils/time'
+import { translateError } from '@/utils/errors'
 import type { Reservation, ReservationStatus } from '@/types'
 
 const EMPTY = {
@@ -154,7 +155,7 @@ export default function ReservationPage() {
           Number(form.durationMinutes),
         )
     setSaving(false)
-    if (err) toast.error(err)
+    if (err) toast.error(translateError(err))
     else {
       toast.success(editing ? 'Reserva actualizada' : 'Reserva creada')
       closeModal()
@@ -170,7 +171,7 @@ export default function ReservationPage() {
       r.customerPhone, r.partySize, r.startTime, r.durationMinutes, 'cancelled',
     )
     setCancelling(false)
-    if (err) toast.error(err)
+    if (err) toast.error(translateError(err))
     else {
       toast.success('Reserva cancelada')
       setCancelTarget(null)

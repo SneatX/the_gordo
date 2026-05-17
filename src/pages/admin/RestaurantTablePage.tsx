@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Plus, Pencil, Trash2, X, ArrowUp, ArrowDown } from 'lucide-react'
 import Tooltip from '@/components/ui/Tooltip'
+import { translateError } from '@/utils/errors'
 import { toast } from 'sonner'
 import { useTablesAdmin } from '@/hooks/useTablesAdmin'
 import { useLocations } from '@/hooks/useLocations'
@@ -76,7 +77,7 @@ export default function RestaurantTablePage() {
       ? await update(editing.id, Number(form.number), Number(form.capacity), form.locationId || null, form.status)
       : await create(Number(form.number), Number(form.capacity), form.locationId || null)
     setSaving(false)
-    if (err) toast.error(err)
+    if (err) toast.error(translateError(err))
     else {
       toast.success(editing ? 'Mesa actualizada' : 'Mesa creada')
       closeModal()
@@ -88,7 +89,7 @@ export default function RestaurantTablePage() {
     setDeleting(true)
     const err = await remove(deleteId)
     setDeleting(false)
-    if (err) toast.error(err)
+    if (err) toast.error(translateError(err))
     else {
       toast.success('Mesa eliminada')
       setDeleteId(null)
