@@ -1,4 +1,4 @@
-import { ReactNode, useRef, useState } from 'react'
+import { type ReactNode, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 interface Props {
