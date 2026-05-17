@@ -8,6 +8,8 @@ import { useDebounce } from '@/hooks/useDebounce'
 import Modal from '@/components/ui/Modal'
 import TableSkeleton from '@/components/ui/TableSkeleton'
 import TablePagination from '@/components/ui/TablePagination'
+import CustomSelect from '@/components/ui/CustomSelect'
+import DateInput from '@/components/ui/DateInput'
 import type { Reservation, ReservationStatus } from '@/types'
 
 const EMPTY = {
@@ -21,7 +23,7 @@ const EMPTY = {
   status: 'active' as ReservationStatus,
 }
 
-const input = 'w-full border-2 border-stone-dark rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-brand-orange transition-colors'
+const input = 'w-full border-2 border-stone-dark rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-brand-orange focus:shadow-[0_0_0_3px_rgba(249,115,22,0.15)] transition-colors'
 const label = 'block font-display font-medium text-stone-dark mb-1 text-sm'
 
 const STATUS_LABEL: Record<ReservationStatus, string> = {
@@ -180,21 +182,11 @@ export default function ReservationPage() {
           </div>
           <div className="flex items-center gap-2">
             <label className="font-display text-sm text-stone-mid whitespace-nowrap">Desde:</label>
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => { setDateFrom(e.target.value); setPage(1) }}
-              className="border-2 border-stone-dark/30 rounded-xl px-3 py-2 text-sm font-display focus:outline-none focus:border-brand-orange transition-colors"
-            />
+            <DateInput value={dateFrom} onChange={(v) => { setDateFrom(v); setPage(1) }} />
           </div>
           <div className="flex items-center gap-2">
             <label className="font-display text-sm text-stone-mid whitespace-nowrap">Hasta:</label>
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(e) => { setDateTo(e.target.value); setPage(1) }}
-              className="border-2 border-stone-dark/30 rounded-xl px-3 py-2 text-sm font-display focus:outline-none focus:border-brand-orange transition-colors"
-            />
+            <DateInput value={dateTo} onChange={(v) => { setDateTo(v); setPage(1) }} />
           </div>
         </div>
 
@@ -244,13 +236,13 @@ export default function ReservationPage() {
           className="bg-white border-4 border-stone-dark rounded-2xl overflow-hidden shadow-[4px_4px_0px_#78350F] animate-fade-in"
         >
           <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px]">
+          <table className="w-full min-w-[640px] table-fixed">
             <thead className="bg-brand-orange">
               <tr>
-                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Cliente</th>
-                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Mesa</th>
-                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Personas</th>
-                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">
+                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm w-[180px]">Cliente</th>
+                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm w-[72px]">Mesa</th>
+                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm w-[80px]">Personas</th>
+                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm w-[140px]">
                   <button
                     onClick={() => { setSortOrder(s => s === 'asc' ? 'desc' : 'asc'); setPage(1) }}
                     className="flex items-center gap-1 hover:opacity-80 transition-opacity"
@@ -259,9 +251,9 @@ export default function ReservationPage() {
                     {sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />}
                   </button>
                 </th>
-                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Duración</th>
-                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Estado</th>
-                <th className="px-4 py-3 w-24" />
+                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm w-[88px]">Duración</th>
+                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm w-[110px]">Estado</th>
+                <th className="px-4 py-3 w-20" />
               </tr>
             </thead>
             <tbody>
@@ -274,7 +266,7 @@ export default function ReservationPage() {
               )}
               {reservations.map((r) => (
                 <tr key={r.id} className="border-t-2 border-stone-dark/10 hover:bg-bg-warm transition-colors">
-                  <td className="px-4 py-3 max-w-[180px]">
+                  <td className="px-4 py-3 max-w-0 overflow-hidden">
                     <p className="text-sm font-medium text-stone-dark truncate">{r.customerName}</p>
                     <p className="text-xs text-stone-mid truncate">{r.customerPhone}</p>
                   </td>
@@ -332,19 +324,15 @@ export default function ReservationPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className={label}>Mesa</label>
-              <select
-                className={input}
+              <CustomSelect
                 value={form.tableId}
-                onChange={(e) => setForm({ ...form, tableId: e.target.value })}
-                required
-              >
-                <option value="">Seleccionar mesa</option>
-                {tables.filter((t) => t.status === 'active').map((t) => (
-                  <option key={t.id} value={t.id}>
-                    Mesa #{t.number} — {t.capacity} personas
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setForm({ ...form, tableId: v })}
+                placeholder="Seleccionar mesa"
+                options={tables.filter((t) => t.status === 'active').map((t) => ({
+                  value: t.id,
+                  label: `Mesa #${t.number} — ${t.capacity} personas`,
+                }))}
+              />
             </div>
             <div>
               <label className={label}>Cliente</label>
@@ -403,26 +391,25 @@ export default function ReservationPage() {
             </div>
             <div>
               <label className={label}>Fecha y hora</label>
-              <input
+              <DateInput
                 type="datetime-local"
-                className={input}
                 value={form.startTime}
-                onChange={(e) => setForm({ ...form, startTime: e.target.value })}
+                onChange={(v) => setForm({ ...form, startTime: v })}
                 required
               />
             </div>
             {editing && (
               <div>
                 <label className={label}>Estado</label>
-                <select
-                  className={input}
+                <CustomSelect
                   value={form.status}
-                  onChange={(e) => setForm({ ...form, status: e.target.value as ReservationStatus })}
-                >
-                  <option value="active">Activa</option>
-                  <option value="completed">Completada</option>
-                  <option value="cancelled">Cancelada</option>
-                </select>
+                  onChange={(v) => setForm({ ...form, status: v as ReservationStatus })}
+                  options={[
+                    { value: 'active', label: 'Activa' },
+                    { value: 'completed', label: 'Completada' },
+                    { value: 'cancelled', label: 'Cancelada' },
+                  ]}
+                />
               </div>
             )}
             <div className="flex gap-3 pt-1">

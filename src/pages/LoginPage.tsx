@@ -31,7 +31,12 @@ export default function LoginPage() {
       <div className="w-full max-w-sm bg-white rounded-3xl border-4 border-stone-dark shadow-[6px_6px_0px_#78350F] p-8 space-y-6">
 
         {/* Header */}
-        <div className="text-center space-y-1">
+        <div className="text-center space-y-2">
+          <img
+            src="/logo.jpg"
+            alt="The Gordo"
+            className="w-24 h-24 rounded-2xl border-4 border-stone-dark shadow-[4px_4px_0px_#78350F] object-cover mx-auto"
+          />
           <h1 className="font-display text-4xl font-bold text-brand-orange leading-tight">
             The Gordo
           </h1>

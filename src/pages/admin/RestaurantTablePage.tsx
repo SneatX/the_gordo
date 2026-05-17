@@ -7,10 +7,11 @@ import { useLocations } from '@/hooks/useLocations'
 import Modal from '@/components/ui/Modal'
 import TableSkeleton from '@/components/ui/TableSkeleton'
 import TablePagination from '@/components/ui/TablePagination'
+import CustomSelect from '@/components/ui/CustomSelect'
 import type { RestaurantTable, TableStatus } from '@/types'
 
 const EMPTY = { number: '', capacity: '', locationId: '', status: 'active' as TableStatus }
-const input = 'w-full border-2 border-stone-dark rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-brand-orange transition-colors'
+const input = 'w-full border-2 border-stone-dark rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-brand-orange focus:shadow-[0_0_0_3px_rgba(249,115,22,0.15)] transition-colors'
 const label = 'block font-display font-medium text-stone-dark mb-1 text-sm'
 
 const STATUS_LABEL: Record<TableStatus, string> = {
@@ -268,28 +269,27 @@ export default function RestaurantTablePage() {
             </div>
             <div>
               <label className={label}>Ubicación</label>
-              <select
-                className={input}
+              <CustomSelect
                 value={form.locationId}
-                onChange={(e) => setForm({ ...form, locationId: e.target.value })}
-              >
-                <option value="">Sin ubicación</option>
-                {locations.map((l) => (
-                  <option key={l.id} value={l.id}>{l.name}</option>
-                ))}
-              </select>
+                onChange={(v) => setForm({ ...form, locationId: v })}
+                placeholder="Sin ubicación"
+                options={[
+                  { value: '', label: 'Sin ubicación' },
+                  ...locations.map((l) => ({ value: l.id, label: l.name })),
+                ]}
+              />
             </div>
             {editing && (
               <div>
                 <label className={label}>Estado</label>
-                <select
-                  className={input}
+                <CustomSelect
                   value={form.status}
-                  onChange={(e) => setForm({ ...form, status: e.target.value as TableStatus })}
-                >
-                  <option value="active">Activa</option>
-                  <option value="blocked">Bloqueada</option>
-                </select>
+                  onChange={(v) => setForm({ ...form, status: v as TableStatus })}
+                  options={[
+                    { value: 'active', label: 'Activa' },
+                    { value: 'blocked', label: 'Bloqueada' },
+                  ]}
+                />
               </div>
             )}
             <div className="flex gap-3 pt-1">

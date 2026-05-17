@@ -6,11 +6,12 @@ import { usePagination } from '@/hooks/usePagination'
 import Modal from '@/components/ui/Modal'
 import TableSkeleton from '@/components/ui/TableSkeleton'
 import TablePagination from '@/components/ui/TablePagination'
+import CustomSelect from '@/components/ui/CustomSelect'
 import type { Schedule } from '@/types'
 
 const DAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
 const EMPTY = { dayOfWeek: '1', startTime: '09:00', endTime: '22:00', isActive: true }
-const input = 'w-full border-2 border-stone-dark rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-brand-orange transition-colors'
+const input = 'w-full border-2 border-stone-dark rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-brand-orange focus:shadow-[0_0_0_3px_rgba(249,115,22,0.15)] transition-colors'
 const label = 'block font-display font-medium text-stone-dark mb-1 text-sm'
 
 export default function SchedulePage() {
@@ -207,15 +208,11 @@ export default function SchedulePage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className={label}>Día</label>
-              <select
-                className={input}
+              <CustomSelect
                 value={form.dayOfWeek}
-                onChange={(e) => setForm({ ...form, dayOfWeek: e.target.value })}
-              >
-                {DAYS.map((day, i) => (
-                  <option key={i} value={i}>{day}</option>
-                ))}
-              </select>
+                onChange={(v) => setForm({ ...form, dayOfWeek: v })}
+                options={DAYS.map((day, i) => ({ value: String(i), label: day }))}
+              />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>

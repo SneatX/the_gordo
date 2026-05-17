@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import CustomSelect from './CustomSelect'
 
 interface Props {
   total: number
@@ -91,18 +92,13 @@ export default function TablePagination({ total, page, pageSize, onPageChange, o
 
       <div className="flex items-center gap-2">
         <span className="font-display text-sm text-stone-mid">Por página:</span>
-        <select
-          value={pageSize}
-          onChange={(e) => {
-            onPageSizeChange(Number(e.target.value))
-            onPageChange(1)
-          }}
-          className="border-2 border-stone-dark rounded-xl px-2 py-1 text-sm font-display text-stone-dark focus:outline-none focus:border-brand-orange transition-colors bg-white"
-        >
-          {PAGE_SIZES.map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
+        <div className="w-24">
+          <CustomSelect
+            value={String(pageSize)}
+            onChange={(v) => { onPageSizeChange(Number(v)); onPageChange(1) }}
+            options={PAGE_SIZES.map((s) => ({ value: String(s), label: String(s) }))}
+          />
+        </div>
       </div>
     </div>
   )
