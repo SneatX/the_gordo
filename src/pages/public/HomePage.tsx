@@ -1,12 +1,10 @@
 import { Link } from 'react-router-dom'
 import { UtensilsCrossed, Clock, MapPin, LayoutDashboard } from 'lucide-react'
 import { useSchedules } from '@/hooks/useSchedules'
-import { useAuth } from '@/hooks/useAuth'
 import { groupSchedules } from '@/utils/schedule'
 
 export default function HomePage() {
   const { schedules, loading: schedulesLoading } = useSchedules()
-  const { user } = useAuth()
   const scheduleGroups = groupSchedules(schedules)
 
   return (
@@ -20,15 +18,13 @@ export default function HomePage() {
             <span className="font-display font-bold text-xl text-white tracking-wide">The Gordo</span>
           </div>
           <div className="flex items-center gap-2">
-            {user && (
-              <Link
-                to="/admin"
-                className="flex items-center gap-1.5 bg-stone-dark text-white font-display font-bold text-sm px-4 py-2 rounded-xl border-2 border-white/30 shadow-[3px_3px_0px_rgba(0,0,0,0.3)] hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] transition-all"
-              >
-                <LayoutDashboard className="w-4 h-4" />
-                Admin
-              </Link>
-            )}
+            <Link
+              to="/admin"
+              className="flex items-center gap-1.5 bg-stone-dark text-white font-display font-bold text-sm px-4 py-2 rounded-xl border-2 border-white/30 shadow-[3px_3px_0px_rgba(0,0,0,0.3)] hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] transition-all"
+            >
+              <LayoutDashboard className="w-4 h-4" />
+              Admin
+            </Link>
             <Link
               to="/reservar"
               className="bg-white text-brand-orange-dark font-display font-bold text-sm px-4 py-2 rounded-xl border-2 border-stone-dark shadow-[3px_3px_0px_#78350F] hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] transition-all"

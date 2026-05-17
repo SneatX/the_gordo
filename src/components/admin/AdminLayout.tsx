@@ -34,7 +34,7 @@ export default function AdminLayout() {
 
   const handleSignOut = async () => {
     await signOut()
-    navigate('/login', { replace: true })
+    navigate('/', { replace: true })
   }
 
   const closeSidebar = () => setSidebarOpen(false)
