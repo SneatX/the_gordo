@@ -444,7 +444,7 @@ export default function ReservationPage() {
               <input
                 className={input}
                 value={form.customerName}
-                onChange={(e) => setForm({ ...form, customerName: e.target.value })}
+                onChange={(e) => setForm({ ...form, customerName: e.target.value.replace(/[0-9]/g, '') })}
                 required
                 autoFocus
               />
@@ -467,7 +467,7 @@ export default function ReservationPage() {
                   maxLength={10}
                   className={input}
                   value={form.customerPhone}
-                  onChange={(e) => setForm({ ...form, customerPhone: e.target.value })}
+                  onChange={(e) => setForm({ ...form, customerPhone: e.target.value.replace(/[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]/g, '') })}
                 />
               </div>
             </div>
