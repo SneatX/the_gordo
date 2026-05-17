@@ -1,10 +1,10 @@
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Plus, Pencil, Trash2, Search, X } from 'lucide-react'
 import { toast } from 'sonner'
-import { useReservations } from '@/hooks/useReservations'
+import { useReservationsAdmin } from '@/hooks/useReservationsAdmin'
 import { useRestaurantTables } from '@/hooks/useRestaurantTables'
-import { usePagination } from '@/hooks/usePagination'
+import { useDebounce } from '@/hooks/useDebounce'
 import Modal from '@/components/ui/Modal'
 import TableSkeleton from '@/components/ui/TableSkeleton'
 import TablePagination from '@/components/ui/TablePagination'
@@ -39,7 +39,6 @@ const STATUS_STYLE: Record<ReservationStatus, string> = {
 type StatusFilter = ReservationStatus | 'all'
 
 export default function ReservationPage() {
-  const { reservations, loading, create, update, remove } = useReservations()
   const { tables } = useRestaurantTables()
 
   const [editing, setEditing] = useState<Reservation | null>(null)
@@ -55,23 +54,16 @@ export default function ReservationPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [dateFrom, setDateFrom] = useState(searchParams.get('desde') ?? '')
   const [dateTo, setDateTo] = useState(searchParams.get('hasta') ?? '')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(5)
 
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase()
-    return reservations.filter((r) => {
-      if (statusFilter !== 'all' && r.status !== statusFilter) return false
-      if (dateFrom && r.startTime < new Date(dateFrom)) return false
-      if (dateTo) {
-        const end = new Date(dateTo)
-        end.setHours(23, 59, 59, 999)
-        if (r.startTime > end) return false
-      }
-      if (q && !r.customerName.toLowerCase().includes(q) && !r.customerPhone.includes(q)) return false
-      return true
-    })
-  }, [reservations, search, statusFilter, dateFrom, dateTo])
+  const debouncedSearch = useDebounce(search, 300)
 
-  const { page, pageSize, setPage, setPageSize, paginated, total } = usePagination(filtered, 5)
+  const { reservations, total, loading, create, update, remove } = useReservationsAdmin(
+    { search: debouncedSearch, status: statusFilter, dateFrom, dateTo },
+    page,
+    pageSize,
+  )
 
   const hasFilters = search || statusFilter !== 'all' || dateFrom || dateTo
   const clearFilters = () => {
@@ -79,6 +71,7 @@ export default function ReservationPage() {
     setStatusFilter('all')
     setDateFrom('')
     setDateTo('')
+    setPage(1)
   }
 
   const openCreate = () => {
@@ -239,14 +232,14 @@ export default function ReservationPage() {
                 </tr>
               </thead>
               <tbody>
-                {paginated.length === 0 && (
+                {reservations.length === 0 && (
                   <tr>
                     <td colSpan={7} className="px-4 py-8 text-center font-display text-stone-mid">
                       {hasFilters ? 'Sin resultados para los filtros aplicados' : 'No hay reservas registradas'}
                     </td>
                   </tr>
                 )}
-                {paginated.map((r) => (
+                {reservations.map((r) => (
                   <tr key={r.id} className="border-t-2 border-stone-dark/10 hover:bg-bg-warm transition-colors">
                     <td className="px-4 py-3 max-w-[180px]">
                       <p className="text-sm font-medium text-stone-dark truncate">{r.customerName}</p>
@@ -291,7 +284,7 @@ export default function ReservationPage() {
             page={page}
             pageSize={pageSize}
             onPageChange={setPage}
-            onPageSizeChange={setPageSize}
+            onPageSizeChange={(s) => { setPageSize(s); setPage(1) }}
           />
         </>
       )}

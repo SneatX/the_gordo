@@ -21,6 +21,13 @@ const toDomain = (row: ReservationRow): Reservation => {
   }
 }
 
+export type ReservationFilters = {
+  search?: string
+  status?: ReservationStatus | 'all'
+  dateFrom?: string
+  dateTo?: string
+}
+
 export const reservationService = {
   getAll: async (): Promise<Result<Reservation[]>> => {
     const { data, error } = await supabase
@@ -29,6 +36,38 @@ export const reservationService = {
       .order('start_time', { ascending: false })
     if (error) return { ok: false, error: error.message }
     return { ok: true, data: data.map(toDomain) }
+  },
+
+  getFiltered: async (
+    filters: ReservationFilters,
+    page: number,
+    pageSize: number,
+  ): Promise<Result<{ data: Reservation[]; total: number }>> => {
+    let query = supabase
+      .from('reservations')
+      .select('*', { count: 'exact' })
+      .order('start_time', { ascending: false })
+
+    if (filters.status && filters.status !== 'all') {
+      query = query.eq('status', filters.status)
+    }
+    if (filters.dateFrom) {
+      query = query.gte('start_time', `${filters.dateFrom}T00:00:00`)
+    }
+    if (filters.dateTo) {
+      query = query.lte('start_time', `${filters.dateTo}T23:59:59`)
+    }
+    if (filters.search && filters.search.trim()) {
+      const q = filters.search.trim()
+      query = query.or(`customer_name.ilike.%${q}%,customer_phone.ilike.%${q}%`)
+    }
+
+    const from = (page - 1) * pageSize
+    query = query.range(from, from + pageSize - 1)
+
+    const { data, error, count } = await query
+    if (error) return { ok: false, error: error.message }
+    return { ok: true, data: { data: (data ?? []).map(toDomain), total: count ?? 0 } }
   },
 
   getById: async (id: string): Promise<Result<Reservation>> => {

@@ -1,10 +1,9 @@
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Plus, Pencil, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
-import { useRestaurantTables } from '@/hooks/useRestaurantTables'
+import { useTablesAdmin } from '@/hooks/useTablesAdmin'
 import { useLocations } from '@/hooks/useLocations'
-import { usePagination } from '@/hooks/usePagination'
 import Modal from '@/components/ui/Modal'
 import TableSkeleton from '@/components/ui/TableSkeleton'
 import TablePagination from '@/components/ui/TablePagination'
@@ -22,7 +21,6 @@ const STATUS_LABEL: Record<TableStatus, string> = {
 type StatusFilter = TableStatus | 'all'
 
 export default function RestaurantTablePage() {
-  const { tables, loading, create, update, remove } = useRestaurantTables()
   const { locations } = useLocations()
 
   const [editing, setEditing] = useState<RestaurantTable | null>(null)
@@ -36,13 +34,14 @@ export default function RestaurantTablePage() {
   const [searchParams] = useSearchParams()
   const initialStatus = searchParams.get('estado') === 'activa' ? 'active' : 'all'
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(initialStatus as StatusFilter)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(5)
 
-  const filtered = useMemo(() => {
-    if (statusFilter === 'all') return tables
-    return tables.filter((t) => t.status === statusFilter)
-  }, [tables, statusFilter])
-
-  const { page, pageSize, setPage, setPageSize, paginated, total } = usePagination(filtered, 5)
+  const { tables, total, loading, create, update, remove } = useTablesAdmin(
+    { status: statusFilter },
+    page,
+    pageSize,
+  )
 
   const openCreate = () => {
     setEditing(null)
@@ -155,14 +154,14 @@ export default function RestaurantTablePage() {
                 </tr>
               </thead>
               <tbody>
-                {paginated.length === 0 && (
+                {tables.length === 0 && (
                   <tr>
                     <td colSpan={5} className="px-4 py-8 text-center font-display text-stone-mid">
                       {statusFilter !== 'all' ? 'Sin mesas con ese estado' : 'No hay mesas registradas'}
                     </td>
                   </tr>
                 )}
-                {paginated.map((t) => (
+                {tables.map((t) => (
                   <tr key={t.id} className="border-t-2 border-stone-dark/10 hover:bg-bg-warm transition-colors">
                     <td className="px-4 py-3 text-sm font-bold text-stone-dark">#{t.number}</td>
                     <td className="px-4 py-3 text-sm text-stone-dark">{t.capacity} personas</td>
@@ -203,7 +202,7 @@ export default function RestaurantTablePage() {
             page={page}
             pageSize={pageSize}
             onPageChange={setPage}
-            onPageSizeChange={setPageSize}
+            onPageSizeChange={(s) => { setPageSize(s); setPage(1) }}
           />
         </>
       )}

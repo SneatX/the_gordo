@@ -12,11 +12,37 @@ const toDomain = (row: RestaurantTableRow): RestaurantTable => ({
   createdAt: new Date(row.created_at),
 })
 
+export type TableFilters = {
+  status?: TableStatus | 'all'
+}
+
 export const restaurantTableService = {
   getAll: async (): Promise<Result<RestaurantTable[]>> => {
     const { data, error } = await supabase.from('restaurant_tables').select('*').order('number')
     if (error) return { ok: false, error: error.message }
     return { ok: true, data: data.map(toDomain) }
+  },
+
+  getFiltered: async (
+    filters: TableFilters,
+    page: number,
+    pageSize: number,
+  ): Promise<Result<{ data: RestaurantTable[]; total: number }>> => {
+    let query = supabase
+      .from('restaurant_tables')
+      .select('*', { count: 'exact' })
+      .order('number')
+
+    if (filters.status && filters.status !== 'all') {
+      query = query.eq('status', filters.status)
+    }
+
+    const from = (page - 1) * pageSize
+    query = query.range(from, from + pageSize - 1)
+
+    const { data, error, count } = await query
+    if (error) return { ok: false, error: error.message }
+    return { ok: true, data: { data: (data ?? []).map(toDomain), total: count ?? 0 } }
   },
 
   getById: async (id: string): Promise<Result<RestaurantTable>> => {

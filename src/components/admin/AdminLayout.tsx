@@ -1,8 +1,7 @@
 import { Outlet, NavLink, Link, useNavigate } from 'react-router-dom'
 import { CalendarDays, LayoutGrid, Clock, MapPin, LogOut } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
-import { useReservations } from '@/hooks/useReservations'
-import { useRestaurantTables } from '@/hooks/useRestaurantTables'
+import { useAdminStats } from '@/hooks/useAdminStats'
 
 const NAV_ITEMS = [
   { to: '/admin/reservas', label: 'Reservas', Icon: CalendarDays },
@@ -11,7 +10,7 @@ const NAV_ITEMS = [
   { to: '/admin/ubicaciones', label: 'Ubicaciones', Icon: MapPin },
 ]
 
-function StatChip({ label, value, color, to }: { label: string; value: number | string; color: string; to: string }) {
+function StatChip({ label, value, color, to }: { label: string; value: number; color: string; to: string }) {
   return (
     <Link
       to={to}
@@ -26,19 +25,14 @@ function StatChip({ label, value, color, to }: { label: string; value: number | 
 export default function AdminLayout() {
   const { user, signOut } = useAuth()
   const navigate = useNavigate()
-  const { reservations } = useReservations()
-  const { tables } = useRestaurantTables()
+  const { totalReservations, todayReservations, activeTables } = useAdminStats()
+
+  const todayISO = new Date().toISOString().split('T')[0]
 
   const handleSignOut = async () => {
     await signOut()
     navigate('/login', { replace: true })
   }
-
-  const today = new Date()
-  const todayISO = today.toISOString().split('T')[0]
-  const todayStr = today.toDateString()
-  const reservasHoy = reservations.filter((r) => r.startTime.toDateString() === todayStr).length
-  const mesasDisponibles = tables.filter((t) => t.status === 'active').length
 
   return (
     <div className="flex min-h-screen bg-bg-cream">
@@ -80,19 +74,19 @@ export default function AdminLayout() {
           <div className="grid grid-cols-1 gap-2">
             <StatChip
               label="Reservas hoy"
-              value={reservasHoy}
+              value={todayReservations}
               color="bg-brand-yellow/30 text-stone-dark"
               to={`/admin/reservas?desde=${todayISO}&hasta=${todayISO}`}
             />
             <StatChip
               label="Total reservas"
-              value={reservations.length}
+              value={totalReservations}
               color="bg-brand-orange/10 text-stone-dark"
               to="/admin/reservas"
             />
             <StatChip
               label="Mesas disponibles"
-              value={mesasDisponibles}
+              value={activeTables}
               color="bg-green-50 text-stone-dark"
               to="/admin/mesas?estado=activa"
             />
