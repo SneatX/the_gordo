@@ -213,11 +213,22 @@ export default function ReservationPage() {
           </div>
           <div className="flex items-center gap-2">
             <label className="font-display text-sm text-stone-mid whitespace-nowrap">Desde:</label>
-            <DateInput value={dateFrom} onChange={(v) => { setDateFrom(v); setPage(1) }} />
+            <DateInput
+              value={dateFrom}
+              onChange={(v) => {
+                setDateFrom(v)
+                if (dateTo && dateTo < v) setDateTo('')
+                setPage(1)
+              }}
+            />
           </div>
           <div className="flex items-center gap-2">
             <label className="font-display text-sm text-stone-mid whitespace-nowrap">Hasta:</label>
-            <DateInput value={dateTo} onChange={(v) => { setDateTo(v); setPage(1) }} />
+            <DateInput
+              value={dateTo}
+              min={dateFrom || undefined}
+              onChange={(v) => { setDateTo(v); setPage(1) }}
+            />
           </div>
         </div>
 
