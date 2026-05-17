@@ -33,8 +33,8 @@ export default function AdminLayout() {
   const todayISO = new Date().toISOString().split('T')[0]
 
   const handleSignOut = async () => {
-    await signOut()
     navigate('/', { replace: true })
+    await signOut()
   }
 
   const closeSidebar = () => setSidebarOpen(false)
