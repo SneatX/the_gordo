@@ -18,18 +18,20 @@ export default function CustomSelect({
 
   const selected = options.find((o) => o.value === value)
 
+  const recalculate = () => {
+    if (!btnRef.current) return
+    const r = btnRef.current.getBoundingClientRect()
+    const spaceBelow = window.innerHeight - r.bottom
+    if (spaceBelow < 220) {
+      setPos({ bottom: window.innerHeight - r.top + 4, left: r.left, width: r.width })
+    } else {
+      setPos({ top: r.bottom + 4, left: r.left, width: r.width })
+    }
+  }
+
   const handleToggle = () => {
     if (disabled) return
-    if (!open && btnRef.current) {
-      const r = btnRef.current.getBoundingClientRect()
-      const spaceBelow = window.innerHeight - r.bottom
-      if (spaceBelow < 220) {
-        // open upward
-        setPos({ bottom: window.innerHeight - r.top + 4, left: r.left, width: r.width })
-      } else {
-        setPos({ top: r.bottom + 4, left: r.left, width: r.width })
-      }
-    }
+    if (!open) recalculate()
     setOpen((v) => !v)
   }
 
@@ -45,9 +47,14 @@ export default function CustomSelect({
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false) }
     document.addEventListener('mousedown', onMouseDown)
     document.addEventListener('keydown', onKey)
+    // Recalculate on scroll (capture phase catches all scroll containers) and resize
+    window.addEventListener('scroll', recalculate, true)
+    window.addEventListener('resize', recalculate)
     return () => {
       document.removeEventListener('mousedown', onMouseDown)
       document.removeEventListener('keydown', onKey)
+      window.removeEventListener('scroll', recalculate, true)
+      window.removeEventListener('resize', recalculate)
     }
   }, [open])
 
