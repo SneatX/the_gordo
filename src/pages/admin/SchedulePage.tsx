@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Pencil, Trash2, ArrowUp, ArrowDown } from 'lucide-react'
+import { Plus, Pencil, Trash2 } from 'lucide-react'
 import Tooltip from '@/components/ui/Tooltip'
 import { toast } from 'sonner'
 import { useSchedules } from '@/hooks/useSchedules'
@@ -25,17 +25,9 @@ export default function SchedulePage() {
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
-
-  const sorted = [...schedules].sort((a, b) =>
-    sortOrder === 'asc' ? a.dayOfWeek - b.dayOfWeek : b.dayOfWeek - a.dayOfWeek
-  )
+  const sorted = [...schedules].sort((a, b) => a.dayOfWeek - b.dayOfWeek)
 
   const { page, pageSize, setPage, setPageSize, paginated, total } = usePagination(sorted, 5)
-
-  const filterBtnBase = 'px-3 py-1.5 rounded-xl border-2 font-display text-sm font-medium transition-all'
-  const filterBtnActive = 'bg-brand-orange border-stone-dark text-white shadow-[2px_2px_0px_#78350F]'
-  const filterBtnInactive = 'bg-white border-stone-dark/30 text-stone-dark hover:border-stone-dark'
 
   const openCreate = () => {
     setEditing(null)
@@ -101,44 +93,19 @@ export default function SchedulePage() {
         </button>
       </div>
 
-      {/* Filter bar */}
-      <div className="bg-white border-4 border-stone-dark rounded-2xl px-4 py-3 shadow-[4px_4px_0px_#78350F] flex flex-wrap items-center gap-2">
-        <span className="font-display text-sm text-stone-mid">Orden:</span>
-        <button
-          onClick={() => { setSortOrder('asc'); setPage(1) }}
-          className={`${filterBtnBase} flex items-center gap-1 ${sortOrder === 'asc' ? filterBtnActive : filterBtnInactive}`}
-        >
-          <ArrowUp className="w-3.5 h-3.5" /> Asc
-        </button>
-        <button
-          onClick={() => { setSortOrder('desc'); setPage(1) }}
-          className={`${filterBtnBase} flex items-center gap-1 ${sortOrder === 'desc' ? filterBtnActive : filterBtnInactive}`}
-        >
-          <ArrowDown className="w-3.5 h-3.5" /> Desc
-        </button>
-      </div>
-
       {/* Table */}
       {loading ? (
         <TableSkeleton cols={5} />
       ) : (
         <div
-          key={`${sortOrder}-${page}-${pageSize}`}
+          key={`${page}-${pageSize}`}
           className="bg-white border-4 border-stone-dark rounded-2xl overflow-hidden shadow-[4px_4px_0px_#78350F] animate-fade-in"
         >
           <div className="overflow-x-auto">
           <table className="w-full min-w-[480px]">
             <thead className="bg-brand-orange">
               <tr>
-                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">
-                  <button
-                    onClick={() => { setSortOrder(o => o === 'asc' ? 'desc' : 'asc'); setPage(1) }}
-                    className="flex items-center gap-1 hover:opacity-80 transition-opacity"
-                  >
-                    Día
-                    {sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />}
-                  </button>
-                </th>
+                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Día</th>
                 <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Apertura</th>
                 <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Cierre</th>
                 <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Estado</th>
