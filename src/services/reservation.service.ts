@@ -53,10 +53,10 @@ export const reservationService = {
       query = query.eq('status', filters.status)
     }
     if (filters.dateFrom) {
-      query = query.gte('start_time', `${filters.dateFrom}T00:00:00`)
+      query = query.gte('start_time', new Date(`${filters.dateFrom}T00:00:00`).toISOString())
     }
     if (filters.dateTo) {
-      query = query.lte('start_time', `${filters.dateTo}T23:59:59`)
+      query = query.lte('start_time', new Date(`${filters.dateTo}T23:59:59`).toISOString())
     }
     if (filters.search && filters.search.trim()) {
       const q = filters.search.trim()
