@@ -22,7 +22,7 @@ export default function LocationPage() {
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
-  const { page, pageSize, setPage, setPageSize, paginated, total } = usePagination(locations, 10)
+  const { page, pageSize, setPage, setPageSize, paginated, total } = usePagination(locations, 5)
 
   const openCreate = () => {
     setEditing(null)

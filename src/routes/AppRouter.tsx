@@ -17,7 +17,7 @@ export default function AppRouter() {
         <Route path="/" element={<HomePage />} />
         <Route path="/reservar" element={<PublicReservationPage />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/admin" element={<Navigate to="/admin/reservations" replace />} />
+        <Route path="/admin" element={<Navigate to="/admin/reservas" replace />} />
 
         <Route
           element={
@@ -26,10 +26,10 @@ export default function AppRouter() {
             </ProtectedRoute>
           }
         >
-          <Route path="/admin/reservations" element={<ReservationPage />} />
-          <Route path="/admin/tables" element={<RestaurantTablePage />} />
-          <Route path="/admin/schedules" element={<SchedulePage />} />
-          <Route path="/admin/locations" element={<LocationPage />} />
+          <Route path="/admin/reservas" element={<ReservationPage />} />
+          <Route path="/admin/mesas" element={<RestaurantTablePage />} />
+          <Route path="/admin/horarios" element={<SchedulePage />} />
+          <Route path="/admin/ubicaciones" element={<LocationPage />} />
         </Route>
 
         <Route path="*" element={<NotFoundPage />} />

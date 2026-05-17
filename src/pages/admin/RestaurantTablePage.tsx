@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { Plus, Pencil, Trash2, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRestaurantTables } from '@/hooks/useRestaurantTables'
 import { useLocations } from '@/hooks/useLocations'
@@ -18,6 +19,8 @@ const STATUS_LABEL: Record<TableStatus, string> = {
   blocked: 'Bloqueada',
 }
 
+type StatusFilter = TableStatus | 'all'
+
 export default function RestaurantTablePage() {
   const { tables, loading, create, update, remove } = useRestaurantTables()
   const { locations } = useLocations()
@@ -29,7 +32,17 @@ export default function RestaurantTablePage() {
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
-  const { page, pageSize, setPage, setPageSize, paginated, total } = usePagination(tables, 10)
+  // Filter — initialize from URL param ?estado=activa (used by admin stats)
+  const [searchParams] = useSearchParams()
+  const initialStatus = searchParams.get('estado') === 'activa' ? 'active' : 'all'
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(initialStatus as StatusFilter)
+
+  const filtered = useMemo(() => {
+    if (statusFilter === 'all') return tables
+    return tables.filter((t) => t.status === statusFilter)
+  }, [tables, statusFilter])
+
+  const { page, pageSize, setPage, setPageSize, paginated, total } = usePagination(filtered, 5)
 
   const openCreate = () => {
     setEditing(null)
@@ -83,6 +96,10 @@ export default function RestaurantTablePage() {
   const locationName = (id: string | null) =>
     id ? (locations.find((l) => l.id === id)?.name ?? '—') : '—'
 
+  const filterBtnBase = 'px-3 py-1.5 rounded-xl border-2 font-display text-sm font-medium transition-all'
+  const filterBtnActive = 'bg-brand-orange border-stone-dark text-white shadow-[2px_2px_0px_#78350F]'
+  const filterBtnInactive = 'bg-white border-stone-dark/30 text-stone-dark hover:border-stone-dark'
+
   return (
     <div className="space-y-6">
 
@@ -96,6 +113,29 @@ export default function RestaurantTablePage() {
           <Plus className="w-4 h-4" />
           Nueva mesa
         </button>
+      </div>
+
+      {/* Filter bar */}
+      <div className="bg-white border-4 border-stone-dark rounded-2xl px-4 py-3 shadow-[4px_4px_0px_#78350F] flex flex-wrap items-center gap-2">
+        <span className="font-display text-sm text-stone-mid">Estado:</span>
+        {(['all', 'active', 'blocked'] as StatusFilter[]).map((s) => (
+          <button
+            key={s}
+            onClick={() => { setStatusFilter(s); setPage(1) }}
+            className={`${filterBtnBase} ${statusFilter === s ? filterBtnActive : filterBtnInactive}`}
+          >
+            {s === 'all' ? 'Todas' : STATUS_LABEL[s]}
+          </button>
+        ))}
+        {statusFilter !== 'all' && (
+          <button
+            onClick={() => { setStatusFilter('all'); setPage(1) }}
+            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-xl border-2 border-stone-dark/30 font-display text-sm text-stone-mid hover:border-stone-dark hover:text-stone-dark transition-all"
+          >
+            <X className="w-3.5 h-3.5" />
+            Limpiar
+          </button>
+        )}
       </div>
 
       {/* Table */}
@@ -118,7 +158,7 @@ export default function RestaurantTablePage() {
                 {paginated.length === 0 && (
                   <tr>
                     <td colSpan={5} className="px-4 py-8 text-center font-display text-stone-mid">
-                      No hay mesas registradas
+                      {statusFilter !== 'all' ? 'Sin mesas con ese estado' : 'No hay mesas registradas'}
                     </td>
                   </tr>
                 )}

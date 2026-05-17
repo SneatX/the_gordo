@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Plus, Pencil, Trash2, Search, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useReservations } from '@/hooks/useReservations'
@@ -48,11 +49,12 @@ export default function ReservationPage() {
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
-  // Filters
+  // Filters — initialize from URL params (used by admin stats links)
+  const [searchParams] = useSearchParams()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
-  const [dateFrom, setDateFrom] = useState('')
-  const [dateTo, setDateTo] = useState('')
+  const [dateFrom, setDateFrom] = useState(searchParams.get('desde') ?? '')
+  const [dateTo, setDateTo] = useState(searchParams.get('hasta') ?? '')
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
@@ -69,7 +71,7 @@ export default function ReservationPage() {
     })
   }, [reservations, search, statusFilter, dateFrom, dateTo])
 
-  const { page, pageSize, setPage, setPageSize, paginated, total } = usePagination(filtered, 10)
+  const { page, pageSize, setPage, setPageSize, paginated, total } = usePagination(filtered, 5)
 
   const hasFilters = search || statusFilter !== 'all' || dateFrom || dateTo
   const clearFilters = () => {
@@ -246,9 +248,9 @@ export default function ReservationPage() {
                 )}
                 {paginated.map((r) => (
                   <tr key={r.id} className="border-t-2 border-stone-dark/10 hover:bg-bg-warm transition-colors">
-                    <td className="px-4 py-3">
-                      <p className="text-sm font-medium text-stone-dark">{r.customerName}</p>
-                      <p className="text-xs text-stone-mid">{r.customerPhone}</p>
+                    <td className="px-4 py-3 max-w-[180px]">
+                      <p className="text-sm font-medium text-stone-dark truncate">{r.customerName}</p>
+                      <p className="text-xs text-stone-mid truncate">{r.customerPhone}</p>
                     </td>
                     <td className="px-4 py-3 text-sm font-bold text-stone-dark">#{tableNumber(r.tableId)}</td>
                     <td className="px-4 py-3 text-sm text-stone-dark">{r.partySize}</td>
@@ -364,9 +366,10 @@ export default function ReservationPage() {
                   type="number"
                   min={15}
                   step={15}
-                  className={input}
+                  className={`${input} disabled:opacity-60 disabled:cursor-not-allowed`}
                   value={form.durationMinutes}
                   onChange={(e) => setForm({ ...form, durationMinutes: e.target.value })}
+                  disabled={!!editing}
                   required
                 />
               </div>

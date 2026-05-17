@@ -20,7 +20,7 @@ export default function LoginPage() {
       setError(err)
       setLoading(false)
     } else {
-      navigate('/admin/locations', { replace: true })
+      navigate('/admin/reservas', { replace: true })
     }
   }
 

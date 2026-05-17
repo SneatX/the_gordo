@@ -23,7 +23,7 @@ export default function SchedulePage() {
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
-  const { page, pageSize, setPage, setPageSize, paginated, total } = usePagination(schedules, 10)
+  const { page, pageSize, setPage, setPageSize, paginated, total } = usePagination(schedules, 5)
 
   const openCreate = () => {
     setEditing(null)
