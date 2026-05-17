@@ -1,6 +1,7 @@
 import { reservationService } from '@/services/reservation.service'
 import { restaurantTableService } from '@/services/restaurantTable.service'
 import { scheduleService } from '@/services/schedule.service'
+import { toAmPm } from '@/utils/time'
 import type { Result, Reservation, ReservationStatus, RestaurantTable } from '@/types'
 
 const toMinutes = (time: string): number => {
@@ -27,8 +28,8 @@ const checkSchedule = async (
   const open = toMinutes(schedule.startTime)
   const close = toMinutes(schedule.endTime)
 
-  if (resStart < open) return `El restaurante abre a las ${schedule.startTime} ese día`
-  if (resEnd > close) return `La reserva excede el horario de cierre (${schedule.endTime})`
+  if (resStart < open) return `El restaurante abre a las ${toAmPm(schedule.startTime)} ese día`
+  if (resEnd > close) return `La reserva excede el horario de cierre (${toAmPm(schedule.endTime)})`
 
   return null
 }
