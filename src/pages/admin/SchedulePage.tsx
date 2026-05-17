@@ -2,7 +2,10 @@ import { useState } from 'react'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useSchedules } from '@/hooks/useSchedules'
+import { usePagination } from '@/hooks/usePagination'
 import Modal from '@/components/ui/Modal'
+import TableSkeleton from '@/components/ui/TableSkeleton'
+import TablePagination from '@/components/ui/TablePagination'
 import type { Schedule } from '@/types'
 
 const DAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
@@ -19,6 +22,8 @@ export default function SchedulePage() {
   const [form, setForm] = useState(EMPTY)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
+
+  const { page, pageSize, setPage, setPageSize, paginated, total } = usePagination(schedules, 10)
 
   const openCreate = () => {
     setEditing(null)
@@ -86,62 +91,72 @@ export default function SchedulePage() {
 
       {/* Table */}
       {loading ? (
-        <p className="font-display text-stone-dark">Cargando...</p>
+        <TableSkeleton cols={5} />
       ) : (
-        <div className="bg-white border-4 border-stone-dark rounded-2xl overflow-hidden shadow-[4px_4px_0px_#78350F]">
-          <table className="w-full">
-            <thead className="bg-brand-orange">
-              <tr>
-                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Día</th>
-                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Apertura</th>
-                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Cierre</th>
-                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Estado</th>
-                <th className="px-4 py-3 w-24" />
-              </tr>
-            </thead>
-            <tbody>
-              {schedules.length === 0 && (
+        <>
+          <div className="bg-white border-4 border-stone-dark rounded-2xl overflow-hidden shadow-[4px_4px_0px_#78350F]">
+            <table className="w-full">
+              <thead className="bg-brand-orange">
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center font-display text-stone-mid">
-                    No hay horarios registrados
-                  </td>
+                  <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Día</th>
+                  <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Apertura</th>
+                  <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Cierre</th>
+                  <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Estado</th>
+                  <th className="px-4 py-3 w-24" />
                 </tr>
-              )}
-              {schedules.map((s) => (
-                <tr key={s.id} className="border-t-2 border-stone-dark/10 hover:bg-bg-warm transition-colors">
-                  <td className="px-4 py-3 text-sm font-medium text-stone-dark">{DAYS[s.dayOfWeek]}</td>
-                  <td className="px-4 py-3 text-sm text-stone-dark">{s.startTime}</td>
-                  <td className="px-4 py-3 text-sm text-stone-dark">{s.endTime}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-display font-semibold border-2
-                      ${s.isActive
-                        ? 'bg-brand-yellow/30 border-brand-yellow-dark text-stone-dark'
-                        : 'bg-stone-dark/10 border-stone-dark/30 text-stone-mid'
-                      }`}>
-                      {s.isActive ? 'Activo' : 'Inactivo'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-1 justify-end">
-                      <button
-                        onClick={() => openEdit(s)}
-                        className="p-1.5 rounded-lg hover:bg-brand-yellow/40 text-stone-dark transition-colors"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => setDeleteId(s.id)}
-                        className="p-1.5 rounded-lg hover:bg-brand-red/10 text-brand-red transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {paginated.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-8 text-center font-display text-stone-mid">
+                      No hay horarios registrados
+                    </td>
+                  </tr>
+                )}
+                {paginated.map((s) => (
+                  <tr key={s.id} className="border-t-2 border-stone-dark/10 hover:bg-bg-warm transition-colors">
+                    <td className="px-4 py-3 text-sm font-medium text-stone-dark">{DAYS[s.dayOfWeek]}</td>
+                    <td className="px-4 py-3 text-sm text-stone-dark">{s.startTime}</td>
+                    <td className="px-4 py-3 text-sm text-stone-dark">{s.endTime}</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-display font-semibold border-2
+                        ${s.isActive
+                          ? 'bg-brand-yellow/30 border-brand-yellow-dark text-stone-dark'
+                          : 'bg-stone-dark/10 border-stone-dark/30 text-stone-mid'
+                        }`}>
+                        {s.isActive ? 'Activo' : 'Inactivo'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-1 justify-end">
+                        <button
+                          onClick={() => openEdit(s)}
+                          className="p-1.5 rounded-lg hover:bg-brand-yellow/40 text-stone-dark transition-colors"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => setDeleteId(s.id)}
+                          className="p-1.5 rounded-lg hover:bg-brand-red/10 text-brand-red transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <TablePagination
+            total={total}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+          />
+        </>
       )}
 
       {/* Create / Edit modal */}
