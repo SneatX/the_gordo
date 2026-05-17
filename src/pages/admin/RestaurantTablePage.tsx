@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Plus, Pencil, Trash2, X } from 'lucide-react'
+import { Plus, Pencil, Trash2, X, ArrowUp, ArrowDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTablesAdmin } from '@/hooks/useTablesAdmin'
 import { useLocations } from '@/hooks/useLocations'
@@ -34,11 +34,12 @@ export default function RestaurantTablePage() {
   const [searchParams] = useSearchParams()
   const initialStatus = searchParams.get('estado') === 'activa' ? 'active' : 'all'
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(initialStatus as StatusFilter)
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(5)
 
   const { tables, total, loading, create, update, remove } = useTablesAdmin(
-    { status: statusFilter },
+    { status: statusFilter, sortOrder },
     page,
     pageSize,
   )
@@ -126,6 +127,20 @@ export default function RestaurantTablePage() {
             {s === 'all' ? 'Todas' : STATUS_LABEL[s]}
           </button>
         ))}
+        <div className="w-px h-5 bg-stone-dark/20 mx-1" />
+        <span className="font-display text-sm text-stone-mid">Orden:</span>
+        <button
+          onClick={() => { setSortOrder('asc'); setPage(1) }}
+          className={`${filterBtnBase} flex items-center gap-1 ${sortOrder === 'asc' ? filterBtnActive : filterBtnInactive}`}
+        >
+          <ArrowUp className="w-3.5 h-3.5" /> Asc
+        </button>
+        <button
+          onClick={() => { setSortOrder('desc'); setPage(1) }}
+          className={`${filterBtnBase} flex items-center gap-1 ${sortOrder === 'desc' ? filterBtnActive : filterBtnInactive}`}
+        >
+          <ArrowDown className="w-3.5 h-3.5" /> Desc
+        </button>
         {statusFilter !== 'all' && (
           <button
             onClick={() => { setStatusFilter('all'); setPage(1) }}
@@ -142,13 +157,21 @@ export default function RestaurantTablePage() {
         <TableSkeleton cols={5} />
       ) : (
         <div
-          key={`${statusFilter}-${page}-${pageSize}`}
+          key={`${statusFilter}-${sortOrder}-${page}-${pageSize}`}
           className="bg-white border-4 border-stone-dark rounded-2xl overflow-hidden shadow-[4px_4px_0px_#78350F] animate-fade-in"
         >
           <table className="w-full">
             <thead className="bg-brand-orange">
               <tr>
-                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Mesa</th>
+                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">
+                  <button
+                    onClick={() => { setSortOrder(o => o === 'asc' ? 'desc' : 'asc'); setPage(1) }}
+                    className="flex items-center gap-1 hover:opacity-80 transition-opacity"
+                  >
+                    Mesa
+                    {sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />}
+                  </button>
+                </th>
                 <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Capacidad</th>
                 <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Ubicación</th>
                 <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Estado</th>

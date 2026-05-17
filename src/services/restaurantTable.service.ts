@@ -14,6 +14,7 @@ const toDomain = (row: RestaurantTableRow): RestaurantTable => ({
 
 export type TableFilters = {
   status?: TableStatus | 'all'
+  sortOrder?: 'asc' | 'desc'
 }
 
 export const restaurantTableService = {
@@ -31,7 +32,7 @@ export const restaurantTableService = {
     let query = supabase
       .from('restaurant_tables')
       .select('*', { count: 'exact' })
-      .order('number')
+      .order('number', { ascending: filters.sortOrder !== 'desc' })
 
     if (filters.status && filters.status !== 'all') {
       query = query.eq('status', filters.status)

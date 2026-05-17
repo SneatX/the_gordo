@@ -209,6 +209,20 @@ export default function ReservationPage() {
               {s === 'all' ? 'Todos' : STATUS_LABEL[s]}
             </button>
           ))}
+          <div className="w-px h-5 bg-stone-dark/20 mx-1" />
+          <span className="font-display text-sm text-stone-mid">Fecha:</span>
+          <button
+            onClick={() => { setSortOrder('asc'); setPage(1) }}
+            className={`${filterBtnBase} flex items-center gap-1 ${sortOrder === 'asc' ? filterBtnActive : filterBtnInactive}`}
+          >
+            <ArrowUp className="w-3.5 h-3.5" /> Asc
+          </button>
+          <button
+            onClick={() => { setSortOrder('desc'); setPage(1) }}
+            className={`${filterBtnBase} flex items-center gap-1 ${sortOrder === 'desc' ? filterBtnActive : filterBtnInactive}`}
+          >
+            <ArrowDown className="w-3.5 h-3.5" /> Desc
+          </button>
           {hasFilters && (
             <button
               onClick={clearFilters}

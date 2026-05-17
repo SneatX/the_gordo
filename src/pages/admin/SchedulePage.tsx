@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, ArrowUp, ArrowDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { useSchedules } from '@/hooks/useSchedules'
 import { usePagination } from '@/hooks/usePagination'
@@ -23,7 +23,17 @@ export default function SchedulePage() {
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
-  const { page, pageSize, setPage, setPageSize, paginated, total } = usePagination(schedules, 5)
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+
+  const sorted = [...schedules].sort((a, b) =>
+    sortOrder === 'asc' ? a.dayOfWeek - b.dayOfWeek : b.dayOfWeek - a.dayOfWeek
+  )
+
+  const { page, pageSize, setPage, setPageSize, paginated, total } = usePagination(sorted, 5)
+
+  const filterBtnBase = 'px-3 py-1.5 rounded-xl border-2 font-display text-sm font-medium transition-all'
+  const filterBtnActive = 'bg-brand-orange border-stone-dark text-white shadow-[2px_2px_0px_#78350F]'
+  const filterBtnInactive = 'bg-white border-stone-dark/30 text-stone-dark hover:border-stone-dark'
 
   const openCreate = () => {
     setEditing(null)
@@ -89,75 +99,102 @@ export default function SchedulePage() {
         </button>
       </div>
 
+      {/* Filter bar */}
+      <div className="bg-white border-4 border-stone-dark rounded-2xl px-4 py-3 shadow-[4px_4px_0px_#78350F] flex flex-wrap items-center gap-2">
+        <span className="font-display text-sm text-stone-mid">Orden:</span>
+        <button
+          onClick={() => { setSortOrder('asc'); setPage(1) }}
+          className={`${filterBtnBase} flex items-center gap-1 ${sortOrder === 'asc' ? filterBtnActive : filterBtnInactive}`}
+        >
+          <ArrowUp className="w-3.5 h-3.5" /> Asc
+        </button>
+        <button
+          onClick={() => { setSortOrder('desc'); setPage(1) }}
+          className={`${filterBtnBase} flex items-center gap-1 ${sortOrder === 'desc' ? filterBtnActive : filterBtnInactive}`}
+        >
+          <ArrowDown className="w-3.5 h-3.5" /> Desc
+        </button>
+      </div>
+
       {/* Table */}
       {loading ? (
         <TableSkeleton cols={5} />
       ) : (
-        <>
-          <div className="bg-white border-4 border-stone-dark rounded-2xl overflow-hidden shadow-[4px_4px_0px_#78350F]">
-            <table className="w-full">
-              <thead className="bg-brand-orange">
+        <div
+          key={`${sortOrder}-${page}-${pageSize}`}
+          className="bg-white border-4 border-stone-dark rounded-2xl overflow-hidden shadow-[4px_4px_0px_#78350F] animate-fade-in"
+        >
+          <table className="w-full">
+            <thead className="bg-brand-orange">
+              <tr>
+                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">
+                  <button
+                    onClick={() => { setSortOrder(o => o === 'asc' ? 'desc' : 'asc'); setPage(1) }}
+                    className="flex items-center gap-1 hover:opacity-80 transition-opacity"
+                  >
+                    Día
+                    {sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />}
+                  </button>
+                </th>
+                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Apertura</th>
+                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Cierre</th>
+                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Estado</th>
+                <th className="px-4 py-3 w-24" />
+              </tr>
+            </thead>
+            <tbody>
+              {paginated.length === 0 && (
                 <tr>
-                  <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Día</th>
-                  <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Apertura</th>
-                  <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Cierre</th>
-                  <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Estado</th>
-                  <th className="px-4 py-3 w-24" />
+                  <td colSpan={5} className="px-4 py-8 text-center font-display text-stone-mid">
+                    No hay horarios registrados
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {paginated.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center font-display text-stone-mid">
-                      No hay horarios registrados
-                    </td>
-                  </tr>
-                )}
-                {paginated.map((s) => (
-                  <tr key={s.id} className="border-t-2 border-stone-dark/10 hover:bg-bg-warm transition-colors">
-                    <td className="px-4 py-3 text-sm font-medium text-stone-dark">{DAYS[s.dayOfWeek]}</td>
-                    <td className="px-4 py-3 text-sm text-stone-dark">{s.startTime}</td>
-                    <td className="px-4 py-3 text-sm text-stone-dark">{s.endTime}</td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-display font-semibold border-2
-                        ${s.isActive
-                          ? 'bg-brand-yellow/30 border-brand-yellow-dark text-stone-dark'
-                          : 'bg-stone-dark/10 border-stone-dark/30 text-stone-mid'
-                        }`}>
-                        {s.isActive ? 'Activo' : 'Inactivo'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1 justify-end">
-                        <button
-                          onClick={() => openEdit(s)}
-                          className="p-1.5 rounded-lg hover:bg-brand-yellow/40 text-stone-dark transition-colors"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setDeleteId(s.id)}
-                          className="p-1.5 rounded-lg hover:bg-brand-red/10 text-brand-red transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <TablePagination
-            total={total}
-            page={page}
-            pageSize={pageSize}
-            onPageChange={setPage}
-            onPageSizeChange={setPageSize}
-          />
-        </>
+              )}
+              {paginated.map((s) => (
+                <tr key={s.id} className="border-t-2 border-stone-dark/10 hover:bg-bg-warm transition-colors">
+                  <td className="px-4 py-3 text-sm font-medium text-stone-dark">{DAYS[s.dayOfWeek]}</td>
+                  <td className="px-4 py-3 text-sm text-stone-dark">{s.startTime}</td>
+                  <td className="px-4 py-3 text-sm text-stone-dark">{s.endTime}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-display font-semibold border-2
+                      ${s.isActive
+                        ? 'bg-brand-yellow/30 border-brand-yellow-dark text-stone-dark'
+                        : 'bg-stone-dark/10 border-stone-dark/30 text-stone-mid'
+                      }`}>
+                      {s.isActive ? 'Activo' : 'Inactivo'}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-1 justify-end">
+                      <button
+                        onClick={() => openEdit(s)}
+                        className="p-1.5 rounded-lg hover:bg-brand-yellow/40 text-stone-dark transition-colors"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setDeleteId(s.id)}
+                        className="p-1.5 rounded-lg hover:bg-brand-red/10 text-brand-red transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
+
+      <TablePagination
+        total={total}
+        page={page}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        onPageSizeChange={setPageSize}
+        loading={loading}
+      />
 
       {/* Create / Edit modal */}
       {modalOpen && (

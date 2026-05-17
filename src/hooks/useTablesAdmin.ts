@@ -17,7 +17,7 @@ export function useTablesAdmin(filters: TableFilters, page: number, pageSize: nu
     }
     setLoading(false)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.status, page, pageSize])
+  }, [filters.status, filters.sortOrder, page, pageSize])
 
   useEffect(() => { load() }, [load])
 
