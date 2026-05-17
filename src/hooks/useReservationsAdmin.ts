@@ -21,7 +21,7 @@ export function useReservationsAdmin(
     }
     setLoading(false)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.search, filters.status, filters.dateFrom, filters.dateTo, page, pageSize])
+  }, [filters.search, filters.status, filters.dateFrom, filters.dateTo, filters.sortOrder, page, pageSize])
 
   useEffect(() => { load() }, [load])
 

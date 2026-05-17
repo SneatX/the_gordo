@@ -141,71 +141,70 @@ export default function RestaurantTablePage() {
       {loading ? (
         <TableSkeleton cols={5} />
       ) : (
-        <>
-          <div className="bg-white border-4 border-stone-dark rounded-2xl overflow-hidden shadow-[4px_4px_0px_#78350F]">
-            <table className="w-full">
-              <thead className="bg-brand-orange">
+        <div className="bg-white border-4 border-stone-dark rounded-2xl overflow-hidden shadow-[4px_4px_0px_#78350F]">
+          <table className="w-full">
+            <thead className="bg-brand-orange">
+              <tr>
+                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Mesa</th>
+                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Capacidad</th>
+                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Ubicación</th>
+                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Estado</th>
+                <th className="px-4 py-3 w-24" />
+              </tr>
+            </thead>
+            <tbody>
+              {tables.length === 0 && (
                 <tr>
-                  <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Mesa</th>
-                  <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Capacidad</th>
-                  <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Ubicación</th>
-                  <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Estado</th>
-                  <th className="px-4 py-3 w-24" />
+                  <td colSpan={5} className="px-4 py-8 text-center font-display text-stone-mid">
+                    {statusFilter !== 'all' ? 'Sin mesas con ese estado' : 'No hay mesas registradas'}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {tables.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center font-display text-stone-mid">
-                      {statusFilter !== 'all' ? 'Sin mesas con ese estado' : 'No hay mesas registradas'}
-                    </td>
-                  </tr>
-                )}
-                {tables.map((t) => (
-                  <tr key={t.id} className="border-t-2 border-stone-dark/10 hover:bg-bg-warm transition-colors">
-                    <td className="px-4 py-3 text-sm font-bold text-stone-dark">#{t.number}</td>
-                    <td className="px-4 py-3 text-sm text-stone-dark">{t.capacity} personas</td>
-                    <td className="px-4 py-3 text-sm text-stone-mid">{locationName(t.locationId)}</td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-display font-semibold border-2
-                        ${t.status === 'active'
-                          ? 'bg-brand-yellow/30 border-brand-yellow-dark text-stone-dark'
-                          : 'bg-brand-red/10 border-brand-red text-brand-red'
-                        }`}>
-                        {STATUS_LABEL[t.status]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1 justify-end">
-                        <button
-                          onClick={() => openEdit(t)}
-                          className="p-1.5 rounded-lg hover:bg-brand-yellow/40 text-stone-dark transition-colors"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setDeleteId(t.id)}
-                          className="p-1.5 rounded-lg hover:bg-brand-red/10 text-brand-red transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <TablePagination
-            total={total}
-            page={page}
-            pageSize={pageSize}
-            onPageChange={setPage}
-            onPageSizeChange={(s) => { setPageSize(s); setPage(1) }}
-          />
-        </>
+              )}
+              {tables.map((t) => (
+                <tr key={t.id} className="border-t-2 border-stone-dark/10 hover:bg-bg-warm transition-colors">
+                  <td className="px-4 py-3 text-sm font-bold text-stone-dark">#{t.number}</td>
+                  <td className="px-4 py-3 text-sm text-stone-dark">{t.capacity} personas</td>
+                  <td className="px-4 py-3 text-sm text-stone-mid">{locationName(t.locationId)}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-display font-semibold border-2
+                      ${t.status === 'active'
+                        ? 'bg-brand-yellow/30 border-brand-yellow-dark text-stone-dark'
+                        : 'bg-brand-red/10 border-brand-red text-brand-red'
+                      }`}>
+                      {STATUS_LABEL[t.status]}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-1 justify-end">
+                      <button
+                        onClick={() => openEdit(t)}
+                        className="p-1.5 rounded-lg hover:bg-brand-yellow/40 text-stone-dark transition-colors"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setDeleteId(t.id)}
+                        className="p-1.5 rounded-lg hover:bg-brand-red/10 text-brand-red transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
+
+      <TablePagination
+        total={total}
+        page={page}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        onPageSizeChange={(s) => { setPageSize(s); setPage(1) }}
+        loading={loading}
+      />
 
       {/* Create / Edit modal */}
       {modalOpen && (

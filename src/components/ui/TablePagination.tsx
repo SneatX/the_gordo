@@ -6,6 +6,7 @@ interface Props {
   pageSize: number
   onPageChange: (page: number) => void
   onPageSizeChange: (size: number) => void
+  loading?: boolean
 }
 
 const PAGE_SIZES = [5, 10, 15, 20]
@@ -20,7 +21,21 @@ function pageNumbers(current: number, total: number): (number | '…')[] {
   return pages
 }
 
-export default function TablePagination({ total, page, pageSize, onPageChange, onPageSizeChange }: Props) {
+export default function TablePagination({ total, page, pageSize, onPageChange, onPageSizeChange, loading }: Props) {
+  if (loading) {
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-4 mt-4 animate-pulse">
+        <div className="h-4 w-36 bg-stone-dark/10 rounded-full" />
+        <div className="flex items-center gap-1">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-8 w-8 bg-stone-dark/10 rounded-lg" />
+          ))}
+        </div>
+        <div className="h-8 w-32 bg-stone-dark/10 rounded-xl" />
+      </div>
+    )
+  }
+
   if (total <= 5) return null
 
   const totalPages = Math.ceil(total / pageSize)

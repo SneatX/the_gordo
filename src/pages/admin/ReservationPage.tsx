@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Plus, Pencil, Trash2, Search, X } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, X, ArrowUp, ArrowDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { useReservationsAdmin } from '@/hooks/useReservationsAdmin'
 import { useRestaurantTables } from '@/hooks/useRestaurantTables'
@@ -54,13 +54,21 @@ export default function ReservationPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [dateFrom, setDateFrom] = useState(searchParams.get('desde') ?? '')
   const [dateTo, setDateTo] = useState(searchParams.get('hasta') ?? '')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(5)
+
+  // Sync date filters when URL params change (e.g. clicking stats chips from sidebar)
+  useEffect(() => {
+    setDateFrom(searchParams.get('desde') ?? '')
+    setDateTo(searchParams.get('hasta') ?? '')
+    setPage(1)
+  }, [searchParams])
 
   const debouncedSearch = useDebounce(search, 300)
 
   const { reservations, total, loading, create, update, remove } = useReservationsAdmin(
-    { search: debouncedSearch, status: statusFilter, dateFrom, dateTo },
+    { search: debouncedSearch, status: statusFilter, dateFrom, dateTo, sortOrder },
     page,
     pageSize,
   )
@@ -217,77 +225,84 @@ export default function ReservationPage() {
       {loading ? (
         <TableSkeleton cols={7} />
       ) : (
-        <>
-          <div className="bg-white border-4 border-stone-dark rounded-2xl overflow-hidden shadow-[4px_4px_0px_#78350F]">
-            <table className="w-full">
-              <thead className="bg-brand-orange">
+        <div className="bg-white border-4 border-stone-dark rounded-2xl overflow-hidden shadow-[4px_4px_0px_#78350F]">
+          <table className="w-full">
+            <thead className="bg-brand-orange">
+              <tr>
+                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Cliente</th>
+                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Mesa</th>
+                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Personas</th>
+                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">
+                  <button
+                    onClick={() => { setSortOrder(s => s === 'asc' ? 'desc' : 'asc'); setPage(1) }}
+                    className="flex items-center gap-1 hover:opacity-80 transition-opacity"
+                  >
+                    Fecha y hora
+                    {sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />}
+                  </button>
+                </th>
+                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Duración</th>
+                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Estado</th>
+                <th className="px-4 py-3 w-24" />
+              </tr>
+            </thead>
+            <tbody>
+              {reservations.length === 0 && (
                 <tr>
-                  <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Cliente</th>
-                  <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Mesa</th>
-                  <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Personas</th>
-                  <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Fecha y hora</th>
-                  <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Duración</th>
-                  <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Estado</th>
-                  <th className="px-4 py-3 w-24" />
+                  <td colSpan={7} className="px-4 py-8 text-center font-display text-stone-mid">
+                    {hasFilters ? 'Sin resultados para los filtros aplicados' : 'No hay reservas registradas'}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {reservations.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center font-display text-stone-mid">
-                      {hasFilters ? 'Sin resultados para los filtros aplicados' : 'No hay reservas registradas'}
-                    </td>
-                  </tr>
-                )}
-                {reservations.map((r) => (
-                  <tr key={r.id} className="border-t-2 border-stone-dark/10 hover:bg-bg-warm transition-colors">
-                    <td className="px-4 py-3 max-w-[180px]">
-                      <p className="text-sm font-medium text-stone-dark truncate">{r.customerName}</p>
-                      <p className="text-xs text-stone-mid truncate">{r.customerPhone}</p>
-                    </td>
-                    <td className="px-4 py-3 text-sm font-bold text-stone-dark">#{tableNumber(r.tableId)}</td>
-                    <td className="px-4 py-3 text-sm text-stone-dark">{r.partySize}</td>
-                    <td className="px-4 py-3 text-sm text-stone-dark">
-                      {r.startTime.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}{' '}
-                      {r.startTime.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-stone-mid">{r.durationMinutes} min</td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-display font-semibold border-2 ${STATUS_STYLE[r.status]}`}>
-                        {STATUS_LABEL[r.status]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-1 justify-end">
-                        <button
-                          onClick={() => openEdit(r)}
-                          className="p-1.5 rounded-lg hover:bg-brand-yellow/40 text-stone-dark transition-colors"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setDeleteId(r.id)}
-                          className="p-1.5 rounded-lg hover:bg-brand-red/10 text-brand-red transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <TablePagination
-            total={total}
-            page={page}
-            pageSize={pageSize}
-            onPageChange={setPage}
-            onPageSizeChange={(s) => { setPageSize(s); setPage(1) }}
-          />
-        </>
+              )}
+              {reservations.map((r) => (
+                <tr key={r.id} className="border-t-2 border-stone-dark/10 hover:bg-bg-warm transition-colors">
+                  <td className="px-4 py-3 max-w-[180px]">
+                    <p className="text-sm font-medium text-stone-dark truncate">{r.customerName}</p>
+                    <p className="text-xs text-stone-mid truncate">{r.customerPhone}</p>
+                  </td>
+                  <td className="px-4 py-3 text-sm font-bold text-stone-dark">#{tableNumber(r.tableId)}</td>
+                  <td className="px-4 py-3 text-sm text-stone-dark">{r.partySize}</td>
+                  <td className="px-4 py-3 text-sm text-stone-dark">
+                    {r.startTime.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}{' '}
+                    {r.startTime.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
+                  </td>
+                  <td className="px-4 py-3 text-sm text-stone-mid">{r.durationMinutes} min</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-display font-semibold border-2 ${STATUS_STYLE[r.status]}`}>
+                      {STATUS_LABEL[r.status]}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-1 justify-end">
+                      <button
+                        onClick={() => openEdit(r)}
+                        className="p-1.5 rounded-lg hover:bg-brand-yellow/40 text-stone-dark transition-colors"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setDeleteId(r.id)}
+                        className="p-1.5 rounded-lg hover:bg-brand-red/10 text-brand-red transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
+
+      <TablePagination
+        total={total}
+        page={page}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        onPageSizeChange={(s) => { setPageSize(s); setPage(1) }}
+        loading={loading}
+      />
 
       {/* Create / Edit modal */}
       {modalOpen && (

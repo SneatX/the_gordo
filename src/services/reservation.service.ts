@@ -26,6 +26,7 @@ export type ReservationFilters = {
   status?: ReservationStatus | 'all'
   dateFrom?: string
   dateTo?: string
+  sortOrder?: 'asc' | 'desc'
 }
 
 export const reservationService = {
@@ -46,7 +47,7 @@ export const reservationService = {
     let query = supabase
       .from('reservations')
       .select('*', { count: 'exact' })
-      .order('start_time', { ascending: false })
+      .order('start_time', { ascending: filters.sortOrder !== 'desc' })
 
     if (filters.status && filters.status !== 'all') {
       query = query.eq('status', filters.status)
