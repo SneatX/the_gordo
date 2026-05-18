@@ -1,20 +1,22 @@
 import { useState, useEffect, useCallback } from 'react'
+import { reservationService, type ReservationFilters } from '@/services/reservation.service'
 import { reservationController } from '@/controllers/reservation.controller'
-import type { Reservation, ReservationStatus } from '@/types'
+import type { Result, Reservation, ReservationStatus, RestaurantTable } from '@/types'
 
-export const useReservations = () => {
+export function useReservations(filters?: ReservationFilters, page?: number, pageSize?: number) {
+  const paginated = page !== undefined && pageSize !== undefined
+
   const [reservations, setReservations] = useState<Reservation[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(paginated)
 
   const load = useCallback(async () => {
+    if (!paginated) return
     setLoading(true)
-    setError(null)
-    const res = await reservationController.getAll()
-    if (res.ok) setReservations(res.data)
-    else setError(res.error)
+    const res = await reservationService.getFiltered(filters!, page, pageSize)
+    if (res.ok) { setReservations(res.data.data); setTotal(res.data.total) }
     setLoading(false)
-  }, [])
+  }, [filters?.search, filters?.status, filters?.dateFrom, filters?.dateTo, filters?.sortOrder, page, pageSize])
 
   useEffect(() => { load() }, [load])
 
@@ -26,14 +28,12 @@ export const useReservations = () => {
     partySize: number,
     startTime: Date,
     durationMinutes: number,
-  ): Promise<string | null> => {
+  ): Promise<Result<Reservation>> => {
     const res = await reservationController.create(
-      tableId, customerName, customerEmail, customerPhone,
-      partySize, startTime, durationMinutes,
+      tableId, customerName, customerEmail, customerPhone, partySize, startTime, durationMinutes,
     )
-    if (!res.ok) return res.error
-    setReservations((prev) => [res.data, ...prev])
-    return null
+    if (res.ok && paginated) await load()
+    return res
   }
 
   const update = async (
@@ -46,22 +46,27 @@ export const useReservations = () => {
     startTime: Date,
     durationMinutes: number,
     status: ReservationStatus,
-  ): Promise<string | null> => {
+  ): Promise<Result<Reservation>> => {
     const res = await reservationController.update(
-      id, tableId, customerName, customerEmail, customerPhone,
-      partySize, startTime, durationMinutes, status,
+      id, tableId, customerName, customerEmail, customerPhone, partySize, startTime, durationMinutes, status,
     )
-    if (!res.ok) return res.error
-    setReservations((prev) => prev.map((r) => (r.id === id ? res.data : r)))
-    return null
+    if (res.ok && paginated) await load()
+    return res
   }
 
   const remove = async (id: string): Promise<string | null> => {
     const res = await reservationController.delete(id)
     if (!res.ok) return res.error
-    setReservations((prev) => prev.filter((r) => r.id !== id))
+    if (paginated) await load()
     return null
   }
 
-  return { reservations, loading, error, reload: load, create, update, remove }
+  const searchAvailableTables = (
+    startTime: Date,
+    durationMinutes: number,
+    minCapacity: number,
+  ): Promise<Result<RestaurantTable[]>> =>
+    reservationController.getAvailableTables(startTime, durationMinutes, minCapacity)
+
+  return { reservations, total, loading, reload: load, create, update, remove, searchAvailableTables }
 }

@@ -12,7 +12,7 @@ import {
   Mail,
   Info,
 } from 'lucide-react'
-import { reservationController } from '@/controllers/reservation.controller'
+import { useReservations } from '@/hooks/useReservations'
 import { useSchedules } from '@/hooks/useSchedules'
 import { useLocations } from '@/hooks/useLocations'
 import StepIndicator, { type Step } from '@/components/reservation/StepIndicator'
@@ -33,6 +33,7 @@ const labelCls = 'block font-display font-semibold text-stone-dark mb-1 text-sm'
 export default function ReservationPage() {
   const { schedules } = useSchedules()
   const { locations } = useLocations()
+  const { searchAvailableTables, create } = useReservations()
 
   const [step, setStep] = useState<Step>(1)
 
@@ -128,11 +129,7 @@ export default function ReservationPage() {
     setSearching(true)
     setSearchError(null)
     const startTime = new Date(`${date}T${time}`)
-    const res = await reservationController.getAvailableTables(
-      startTime,
-      RESERVATION_DURATION_MIN,
-      partySize,
-    )
+    const res = await searchAvailableTables(startTime, RESERVATION_DURATION_MIN, partySize)
     setSearching(false)
     if (!res.ok) {
       setSearchError(res.error)
@@ -193,14 +190,9 @@ export default function ReservationPage() {
     const startTime = new Date(`${date}T${time}`)
     setSubmitting(true)
     setSubmitError(null)
-    const res = await reservationController.create(
-      selectedTableId,
-      customerName,
-      customerEmail,
-      customerPhone,
-      partySize,
-      startTime,
-      RESERVATION_DURATION_MIN,
+    const res = await create(
+      selectedTableId, customerName, customerEmail, customerPhone,
+      partySize, startTime, RESERVATION_DURATION_MIN,
     )
     setSubmitting(false)
     if (res.ok) {

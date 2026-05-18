@@ -18,6 +18,20 @@ export const locationService = {
     return { ok: true, data: data.map(toDomain) }
   },
 
+  getFiltered: async (
+    sortOrder: 'asc' | 'desc',
+    page: number,
+    pageSize: number,
+  ): Promise<Result<{ data: Location[]; total: number }>> => {
+    const { data, error, count } = await supabase
+      .from('locations')
+      .select('*', { count: 'exact' })
+      .order('name', { ascending: sortOrder !== 'desc' })
+      .range((page - 1) * pageSize, page * pageSize - 1)
+    if (error) return { ok: false, error: error.message }
+    return { ok: true, data: { data: (data ?? []).map(toDomain), total: count ?? 0 } }
+  },
+
   getById: async (id: string): Promise<Result<Location>> => {
     const { data, error } = await supabase.from('locations').select('*').eq('id', id).single()
     if (error) return { ok: false, error: error.message }

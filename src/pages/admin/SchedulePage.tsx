@@ -3,7 +3,6 @@ import { Plus, Pencil, Trash2 } from 'lucide-react'
 import Tooltip from '@/components/ui/Tooltip'
 import { toast } from 'sonner'
 import { useSchedules } from '@/hooks/useSchedules'
-import { usePagination } from '@/hooks/usePagination'
 import Modal from '@/components/ui/Modal'
 import TableSkeleton from '@/components/ui/TableSkeleton'
 import TablePagination from '@/components/ui/TablePagination'
@@ -16,8 +15,6 @@ const input = 'w-full border-2 border-stone-dark rounded-xl px-3 py-2 text-sm fo
 const label = 'block font-display font-medium text-stone-dark mb-1 text-sm'
 
 export default function SchedulePage() {
-  const { schedules, loading, create, update, remove } = useSchedules()
-
   const [editing, setEditing] = useState<Schedule | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
@@ -25,9 +22,10 @@ export default function SchedulePage() {
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
-  const sorted = [...schedules].sort((a, b) => a.dayOfWeek - b.dayOfWeek)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(5)
 
-  const { page, pageSize, setPage, setPageSize, paginated, total } = usePagination(sorted, 5)
+  const { schedules, total, loading, create, update, remove } = useSchedules(page, pageSize)
 
   const openCreate = () => {
     setEditing(null)
@@ -113,14 +111,14 @@ export default function SchedulePage() {
               </tr>
             </thead>
             <tbody>
-              {paginated.length === 0 && (
+              {schedules.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-4 py-8 text-center font-display text-stone-mid">
                     No hay horarios registrados
                   </td>
                 </tr>
               )}
-              {paginated.map((s) => (
+              {schedules.map((s) => (
                 <tr key={s.id} className="border-t-2 border-stone-dark/10 hover:bg-bg-warm transition-colors">
                   <td className="px-4 py-3 text-sm font-medium text-stone-dark">{DAYS[s.dayOfWeek]}</td>
                   <td className="px-4 py-3 text-sm text-stone-dark">{s.startTime}</td>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
+import { adminStatsService } from '@/services/adminStats.service'
 import type { AdminStats } from '@/types'
 
 export function useAdminStats() {
@@ -10,34 +11,13 @@ export function useAdminStats() {
   })
 
   const load = useCallback(async () => {
-    const today = new Date()
-    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString()
-    const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999).toISOString()
-
-    const [totalRes, todayRes, tablesRes] = await Promise.all([
-      supabase.from('reservations').select('*', { count: 'exact', head: true }),
-      supabase
-        .from('reservations')
-        .select('*', { count: 'exact', head: true })
-        .gte('start_time', todayStart)
-        .lte('start_time', todayEnd),
-      supabase
-        .from('restaurant_tables')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'active'),
-    ])
-
-    setStats({
-      totalReservations: totalRes.count ?? 0,
-      todayReservations: todayRes.count ?? 0,
-      activeTables: tablesRes.count ?? 0,
-    })
+    const res = await adminStatsService.get()
+    if (res.ok) setStats(res.data)
   }, [])
 
   useEffect(() => {
     load()
 
-    // Realtime subscription — update stats on any change to reservations or tables
     const channel = supabase
       .channel('admin-stats')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'reservations' }, load)

@@ -1,13 +1,9 @@
 import Modal from '@/components/ui/Modal'
 import type { Location } from '@/types'
+import type { LocationForm } from './types'
 
 const input = 'w-full border-2 border-stone-dark rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-brand-orange transition-colors'
 const label = 'block font-display font-medium text-stone-dark mb-1 text-sm'
-
-export interface LocationForm {
-  name: string
-  description: string
-}
 
 interface Props {
   editing: Location | null

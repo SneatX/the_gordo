@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
-import { useTablesAdmin } from '@/hooks/useTablesAdmin'
+import { useRestaurantTables } from '@/hooks/useRestaurantTables'
 import { useLocations } from '@/hooks/useLocations'
 import { translateError } from '@/utils/errors'
 import TableFilters from '@/components/admin/tables/TableFilters'
@@ -30,7 +30,7 @@ export default function RestaurantTablePage() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(5)
 
-  const { tables, total, loading, create, update, remove } = useTablesAdmin(
+  const { tables, total, loading, create, update, remove } = useRestaurantTables(
     { status: statusFilter, sortOrder },
     page,
     pageSize,

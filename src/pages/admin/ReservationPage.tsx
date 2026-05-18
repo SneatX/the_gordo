@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
-import { useReservationsAdmin } from '@/hooks/useReservationsAdmin'
+import { useReservations } from '@/hooks/useReservations'
 import { useRestaurantTables } from '@/hooks/useRestaurantTables'
 import { useSchedules } from '@/hooks/useSchedules'
 import { useDebounce } from '@/hooks/useDebounce'
@@ -43,7 +43,7 @@ export default function ReservationPage() {
 
   const debouncedSearch = useDebounce(search, 300)
 
-  const { reservations, total, loading, create, update } = useReservationsAdmin(
+  const { reservations, total, loading, create, update } = useReservations(
     { search: debouncedSearch, status: statusFilter, dateFrom, dateTo, sortOrder },
     page,
     pageSize,
@@ -92,7 +92,7 @@ export default function ReservationPage() {
     e.preventDefault()
     setSaving(true)
     const startDate = new Date(`${form.date}T${form.time}`)
-    const err = editing
+    const res = editing
       ? await update(
           editing.id, form.tableId, form.customerName, form.customerEmail,
           form.customerPhone, Number(form.partySize), startDate,
@@ -104,7 +104,7 @@ export default function ReservationPage() {
           Number(form.durationMinutes),
         )
     setSaving(false)
-    if (err) toast.error(translateError(err))
+    if (!res.ok) toast.error(translateError(res.error))
     else {
       toast.success(editing ? 'Reserva actualizada' : 'Reserva creada')
       closeModal()
@@ -115,12 +115,12 @@ export default function ReservationPage() {
     if (!cancelTarget) return
     setCancelling(true)
     const r = cancelTarget
-    const err = await update(
+    const res = await update(
       r.id, r.tableId, r.customerName, r.customerEmail,
       r.customerPhone, r.partySize, r.startTime, r.durationMinutes, 'cancelled',
     )
     setCancelling(false)
-    if (err) toast.error(translateError(err))
+    if (!res.ok) toast.error(translateError(res.error))
     else {
       toast.success('Reserva cancelada')
       setCancelTarget(null)

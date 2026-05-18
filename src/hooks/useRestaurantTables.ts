@@ -1,20 +1,26 @@
 import { useState, useEffect, useCallback } from 'react'
+import { restaurantTableService, type TableFilters } from '@/services/restaurantTable.service'
 import { restaurantTableController } from '@/controllers/restaurantTable.controller'
 import type { RestaurantTable, TableStatus } from '@/types'
 
-export const useRestaurantTables = () => {
+export function useRestaurantTables(filters?: TableFilters, page?: number, pageSize?: number) {
+  const paginated = page !== undefined && pageSize !== undefined
+
   const [tables, setTables] = useState<RestaurantTable[]>([])
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
-    setError(null)
-    const res = await restaurantTableController.getAll()
-    if (res.ok) setTables(res.data)
-    else setError(res.error)
+    if (paginated) {
+      const res = await restaurantTableService.getFiltered(filters ?? {}, page, pageSize)
+      if (res.ok) { setTables(res.data.data); setTotal(res.data.total) }
+    } else {
+      const res = await restaurantTableController.getAll()
+      if (res.ok) { setTables(res.data); setTotal(res.data.length) }
+    }
     setLoading(false)
-  }, [])
+  }, [filters?.status, filters?.sortOrder, page, pageSize])
 
   useEffect(() => { load() }, [load])
 
@@ -25,7 +31,8 @@ export const useRestaurantTables = () => {
   ): Promise<string | null> => {
     const res = await restaurantTableController.create(number, capacity, locationId)
     if (!res.ok) return res.error
-    setTables((prev) => [...prev, res.data])
+    if (paginated) await load()
+    else setTables((prev) => [...prev, res.data])
     return null
   }
 
@@ -38,16 +45,18 @@ export const useRestaurantTables = () => {
   ): Promise<string | null> => {
     const res = await restaurantTableController.update(id, number, capacity, locationId, status)
     if (!res.ok) return res.error
-    setTables((prev) => prev.map((t) => (t.id === id ? res.data : t)))
+    if (paginated) await load()
+    else setTables((prev) => prev.map((t) => (t.id === id ? res.data : t)))
     return null
   }
 
   const remove = async (id: string): Promise<string | null> => {
     const res = await restaurantTableController.delete(id)
     if (!res.ok) return res.error
-    setTables((prev) => prev.filter((t) => t.id !== id))
+    if (paginated) await load()
+    else setTables((prev) => prev.filter((t) => t.id !== id))
     return null
   }
 
-  return { tables, loading, error, reload: load, create, update, remove }
+  return { tables, total, loading, reload: load, create, update, remove }
 }

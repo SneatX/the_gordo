@@ -22,6 +22,19 @@ export const scheduleService = {
     return { ok: true, data: data.map(toDomain) }
   },
 
+  getFiltered: async (
+    page: number,
+    pageSize: number,
+  ): Promise<Result<{ data: Schedule[]; total: number }>> => {
+    const { data, error, count } = await supabase
+      .from('schedules')
+      .select('*', { count: 'exact' })
+      .order('day_of_week')
+      .range((page - 1) * pageSize, page * pageSize - 1)
+    if (error) return { ok: false, error: error.message }
+    return { ok: true, data: { data: (data ?? []).map(toDomain), total: count ?? 0 } }
+  },
+
   getById: async (id: string): Promise<Result<Schedule>> => {
     const { data, error } = await supabase.from('schedules').select('*').eq('id', id).single()
     if (error) return { ok: false, error: error.message }

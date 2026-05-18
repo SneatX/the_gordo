@@ -2,38 +2,32 @@ import { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { useLocations } from '@/hooks/useLocations'
-import { usePagination } from '@/hooks/usePagination'
 import { translateError } from '@/utils/errors'
 import LocationFilters from '@/components/admin/locations/LocationFilters'
 import LocationTable from '@/components/admin/locations/LocationTable'
 import LocationFormModal from '@/components/admin/locations/LocationFormModal'
 import DeleteLocationModal from '@/components/admin/locations/DeleteLocationModal'
-import type { LocationForm } from '@/components/admin/locations/LocationFormModal'
+import { EMPTY_FORM } from '@/components/admin/locations/types'
+import type { LocationForm } from '@/components/admin/locations/types'
 import type { Location } from '@/types'
 
-const EMPTY: LocationForm = { name: '', description: '' }
-
 export default function LocationPage() {
-  const { locations, loading, create, update, remove } = useLocations()
-
   const [editing, setEditing] = useState<Location | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
-  const [form, setForm] = useState<LocationForm>(EMPTY)
+  const [form, setForm] = useState<LocationForm>(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(5)
 
-  const sorted = [...locations].sort((a, b) =>
-    sortOrder === 'asc' ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)
-  )
-
-  const { page, pageSize, setPage, setPageSize, paginated, total } = usePagination(sorted, 5)
+  const { locations, total, loading, create, update, remove } = useLocations(sortOrder, page, pageSize)
 
   const openCreate = () => {
     setEditing(null)
-    setForm(EMPTY)
+    setForm(EMPTY_FORM)
     setModalOpen(true)
   }
 
@@ -46,7 +40,7 @@ export default function LocationPage() {
   const closeModal = () => {
     setModalOpen(false)
     setEditing(null)
-    setForm(EMPTY)
+    setForm(EMPTY_FORM)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -98,7 +92,7 @@ export default function LocationPage() {
       />
 
       <LocationTable
-        paginated={paginated}
+        paginated={locations}
         loading={loading}
         cacheKey={cacheKey}
         sortOrder={sortOrder}
