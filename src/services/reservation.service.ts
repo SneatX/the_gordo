@@ -22,6 +22,7 @@ const toDomain = (row: ReservationRow): Reservation => {
 }
 
 export type ReservationFilters = {
+  view?: 'upcoming' | 'past' | 'all'
   search?: string
   status?: ReservationStatus | 'all'
   dateFrom?: string
@@ -44,10 +45,18 @@ export const reservationService = {
     page: number,
     pageSize: number,
   ): Promise<Result<{ data: Reservation[]; total: number }>> => {
+    const todayISO = new Date(new Date().toDateString()).toISOString()
+
     let query = supabase
       .from('reservations')
       .select('*', { count: 'exact' })
       .order('start_time', { ascending: filters.sortOrder !== 'desc' })
+
+    if (filters.view === 'upcoming') {
+      query = query.gte('start_time', todayISO)
+    } else if (filters.view === 'past') {
+      query = query.lt('start_time', todayISO)
+    }
 
     if (filters.status && filters.status !== 'all') {
       query = query.eq('status', filters.status)

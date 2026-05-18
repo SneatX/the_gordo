@@ -16,7 +16,7 @@ export function useReservations(filters?: ReservationFilters, page?: number, pag
     const res = await reservationService.getFiltered(filters!, page, pageSize)
     if (res.ok) { setReservations(res.data.data); setTotal(res.data.total) }
     setLoading(false)
-  }, [filters?.search, filters?.status, filters?.dateFrom, filters?.dateTo, filters?.sortOrder, page, pageSize])
+  }, [filters?.view, filters?.search, filters?.status, filters?.dateFrom, filters?.dateTo, filters?.sortOrder, page, pageSize])
 
   useEffect(() => { load() }, [load])
 

@@ -4,6 +4,8 @@ import { STATUS_LABEL } from './types'
 import type { StatusFilter } from './types'
 
 interface Props {
+  view: 'upcoming' | 'past' | 'all'
+  onViewChange: (v: 'upcoming' | 'past' | 'all') => void
   search: string
   onSearchChange: (v: string) => void
   statusFilter: StatusFilter
@@ -23,6 +25,7 @@ const filterBtnActive = 'bg-brand-orange border-stone-dark text-white shadow-[2p
 const filterBtnInactive = 'bg-white border-stone-dark/30 text-stone-dark hover:border-stone-dark'
 
 export default function ReservationFilters({
+  view, onViewChange,
   search, onSearchChange,
   statusFilter, onStatusFilterChange,
   dateFrom, onDateFromChange,
@@ -32,6 +35,40 @@ export default function ReservationFilters({
 }: Props) {
   return (
     <div className="bg-white border-4 border-stone-dark rounded-2xl p-4 shadow-[4px_4px_0px_#78350F] space-y-3">
+
+      <div className="flex gap-1 p-1 bg-bg-warm rounded-xl w-fit border-2 border-stone-dark/20">
+        <button
+          onClick={() => onViewChange('upcoming')}
+          className={`px-4 py-1.5 rounded-lg font-display font-semibold text-sm transition-all ${
+            view === 'upcoming'
+              ? 'bg-brand-orange text-white shadow-[2px_2px_0px_#78350F]'
+              : 'text-stone-dark hover:bg-white'
+          }`}
+        >
+          Próximas
+        </button>
+        <button
+          onClick={() => onViewChange('past')}
+          className={`px-4 py-1.5 rounded-lg font-display font-semibold text-sm transition-all ${
+            view === 'past'
+              ? 'bg-brand-orange text-white shadow-[2px_2px_0px_#78350F]'
+              : 'text-stone-dark hover:bg-white'
+          }`}
+        >
+          Anteriores
+        </button>
+        <button
+          onClick={() => onViewChange('all')}
+          className={`px-4 py-1.5 rounded-lg font-display font-semibold text-sm transition-all ${
+            view === 'all'
+              ? 'bg-brand-orange text-white shadow-[2px_2px_0px_#78350F]'
+              : 'text-stone-dark hover:bg-white'
+          }`}
+        >
+          Todas
+        </button>
+      </div>
+
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-mid pointer-events-none" />

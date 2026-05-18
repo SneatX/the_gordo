@@ -27,6 +27,7 @@ export default function ReservationPage() {
   const [cancelling, setCancelling] = useState(false)
 
   const [searchParams] = useSearchParams()
+  const [view, setView] = useState<'upcoming' | 'past' | 'all'>('upcoming')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [dateFrom, setDateFrom] = useState(searchParams.get('desde') ?? '')
@@ -34,6 +35,12 @@ export default function ReservationPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc')
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(5)
+
+  const handleViewChange = (v: 'upcoming' | 'past' | 'all') => {
+    setView(v)
+    setSortOrder(v === 'past' ? 'desc' : 'asc')
+    setPage(1)
+  }
 
   useEffect(() => {
     setDateFrom(searchParams.get('desde') ?? '')
@@ -44,7 +51,7 @@ export default function ReservationPage() {
   const debouncedSearch = useDebounce(search, 300)
 
   const { reservations, total, loading, create, update } = useReservations(
-    { search: debouncedSearch, status: statusFilter, dateFrom, dateTo, sortOrder },
+    { view, search: debouncedSearch, status: statusFilter, dateFrom, dateTo, sortOrder },
     page,
     pageSize,
   )
@@ -56,6 +63,7 @@ export default function ReservationPage() {
     setStatusFilter('all')
     setDateFrom('')
     setDateTo('')
+    setSortOrder(view === 'upcoming' ? 'asc' : 'desc')
     setPage(1)
   }
 
@@ -129,7 +137,7 @@ export default function ReservationPage() {
 
   const tableNumber = (id: string) => tables.find((t) => t.id === id)?.number ?? '—'
 
-  const cacheKey = `${debouncedSearch}-${statusFilter}-${dateFrom}-${dateTo}-${sortOrder}-${page}-${pageSize}`
+  const cacheKey = `${view}-${debouncedSearch}-${statusFilter}-${dateFrom}-${dateTo}-${sortOrder}-${page}-${pageSize}`
 
   return (
     <div className="space-y-6">
@@ -147,6 +155,8 @@ export default function ReservationPage() {
       </div>
 
       <ReservationFilters
+        view={view}
+        onViewChange={handleViewChange}
         search={search}
         onSearchChange={(v) => { setSearch(v); setPage(1) }}
         statusFilter={statusFilter}
