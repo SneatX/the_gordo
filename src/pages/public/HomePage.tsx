@@ -1,21 +1,29 @@
 import { Link } from 'react-router-dom'
 import { UtensilsCrossed, Clock, MapPin, LayoutDashboard } from 'lucide-react'
 import { useSchedules } from '@/hooks/useSchedules'
+import { useRestaurantTables } from '@/hooks/useRestaurantTables'
 import { groupSchedules } from '@/utils/schedule'
 
 export default function HomePage() {
   const { schedules, loading: schedulesLoading } = useSchedules()
+  const { tables, loading: tablesLoading } = useRestaurantTables()
   const scheduleGroups = groupSchedules(schedules)
+  const availableTables = tables.filter((t) => t.status === 'active').length
 
   return (
     <div className="min-h-screen bg-bg-cream font-body">
-
       {/* Nav */}
       <header className="sticky top-0 z-10 bg-brand-orange border-b-4 border-stone-dark shadow-[0_4px_0px_#78350F]">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img src="/icon.png" alt="The Gordo" className="w-8 h-8 rounded-lg border-2 border-stone-dark" />
-            <span className="font-display font-bold text-xl text-white tracking-wide">The Gordo</span>
+            <img
+              src="/icon.png"
+              alt="The Gordo"
+              className="w-8 h-8 rounded-lg border-2 border-stone-dark"
+            />
+            <span className="font-display font-bold text-xl text-white tracking-wide">
+              The Gordo
+            </span>
           </div>
           <div className="flex items-center gap-2">
             <Link
@@ -54,6 +62,35 @@ export default function HomePage() {
           >
             ¡Hacer una reserva!
           </Link>
+
+          {/* Indicador de mesas */}
+          <div className="mt-6">
+            {tablesLoading ? (
+              <div className="inline-flex items-center gap-2.5 bg-white/20 border-2 border-stone-dark rounded-2xl px-5 py-2.5 animate-pulse">
+                <div className="w-2.5 h-2.5 rounded-full bg-white/60" />
+                <span className="font-display text-sm text-white/80">Verificando mesas...</span>
+              </div>
+            ) : availableTables > 0 ? (
+              <div  className="inline-flex items-center gap-3 bg-white border-2 border-stone-dark rounded-2xl px-5 py-2.5 shadow-[4px_4px_0px_#78350F] hover:-translate-y-1 hover:shadow-[4px_6px_0px_#78350F] transition-all duration-150">
+                <span className="relative flex h-3 w-3 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                  <span className="relative inline-flex h-3 w-3 rounded-full bg-green-500" />
+                </span>
+                <span className="font-display font-semibold text-stone-dark text-sm">
+                  <span className="font-black text-brand-orange text-base">{availableTables}</span>{' '}
+                  mesa{availableTables !== 1 ? 's' : ''} disponible
+                  {availableTables !== 1 ? 's' : ''}
+                </span>
+              </div>
+            ) : (
+              <div className="inline-flex items-center gap-2.5 bg-white/20 border-2 border-stone-dark/40 rounded-2xl px-5 py-2.5">
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white/60 shrink-0" />
+                <span className="font-display text-sm text-white/90">
+                  Sin mesas disponibles por ahora
+                </span>
+              </div>
+            )}
+          </div>
         </div>
       </section>
 
@@ -102,7 +139,9 @@ export default function HomePage() {
           </h2>
           <div className="max-w-sm mx-auto space-y-3">
             {schedulesLoading ? (
-              <p className="text-center font-display text-stone-mid text-sm">Cargando horarios...</p>
+              <p className="text-center font-display text-stone-mid text-sm">
+                Cargando horarios...
+              </p>
             ) : scheduleGroups.length === 0 ? (
               <p className="text-center font-display text-stone-mid text-sm">
                 Consulta nuestros horarios llamándonos.
@@ -113,7 +152,9 @@ export default function HomePage() {
                   key={label}
                   className="flex justify-between items-center bg-white border-2 border-stone-dark rounded-xl px-5 py-3 shadow-[3px_3px_0px_#78350F]"
                 >
-                  <span className="font-display font-semibold text-stone-dark text-sm">{label}</span>
+                  <span className="font-display font-semibold text-stone-dark text-sm">
+                    {label}
+                  </span>
                   <span className="font-display font-bold text-brand-orange text-sm">{hours}</span>
                 </div>
               ))
@@ -144,7 +185,9 @@ export default function HomePage() {
       <footer className="bg-stone-dark text-white py-8 border-t-4 border-stone-mid">
         <div className="max-w-4xl mx-auto px-4 text-center">
           <p className="font-display font-bold text-lg mb-1">The Gordo — Comidas Rápidas</p>
-          <p className="text-white/60 text-sm">© {new Date().getFullYear()} Todos los derechos reservados.</p>
+          <p className="text-white/60 text-sm">
+            © {new Date().getFullYear()} Todos los derechos reservados.
+          </p>
         </div>
       </footer>
     </div>
