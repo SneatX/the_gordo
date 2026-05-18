@@ -1,27 +1,17 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Plus, Pencil, Trash2, X, ArrowUp, ArrowDown } from 'lucide-react'
-import Tooltip from '@/components/ui/Tooltip'
-import { translateError } from '@/utils/errors'
+import { Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTablesAdmin } from '@/hooks/useTablesAdmin'
 import { useLocations } from '@/hooks/useLocations'
-import Modal from '@/components/ui/Modal'
-import TableSkeleton from '@/components/ui/TableSkeleton'
-import TablePagination from '@/components/ui/TablePagination'
-import CustomSelect from '@/components/ui/CustomSelect'
+import { translateError } from '@/utils/errors'
+import TableFilters from '@/components/admin/tables/TableFilters'
+import TableList from '@/components/admin/tables/TableList'
+import TableFormModal from '@/components/admin/tables/TableFormModal'
+import DeleteTableModal from '@/components/admin/tables/DeleteTableModal'
+import { EMPTY_FORM } from '@/components/admin/tables/types'
+import type { TableForm, StatusFilter } from '@/components/admin/tables/types'
 import type { RestaurantTable, TableStatus } from '@/types'
-
-const EMPTY = { number: '', capacity: '', locationId: '', status: 'active' as TableStatus }
-const input = 'w-full border-2 border-stone-dark rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-brand-orange focus:shadow-[0_0_0_3px_rgba(249,115,22,0.15)] transition-colors'
-const label = 'block font-display font-medium text-stone-dark mb-1 text-sm'
-
-const STATUS_LABEL: Record<TableStatus, string> = {
-  active: 'Activa',
-  blocked: 'Bloqueada',
-}
-
-type StatusFilter = TableStatus | 'all'
 
 export default function RestaurantTablePage() {
   const { locations } = useLocations()
@@ -29,11 +19,10 @@ export default function RestaurantTablePage() {
   const [editing, setEditing] = useState<RestaurantTable | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
-  const [form, setForm] = useState(EMPTY)
+  const [form, setForm] = useState<TableForm>(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
-  // Filter — initialize from URL param ?estado=activa (used by admin stats)
   const [searchParams] = useSearchParams()
   const initialStatus = searchParams.get('estado') === 'activa' ? 'active' : 'all'
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(initialStatus as StatusFilter)
@@ -49,7 +38,7 @@ export default function RestaurantTablePage() {
 
   const openCreate = () => {
     setEditing(null)
-    setForm(EMPTY)
+    setForm(EMPTY_FORM)
     setModalOpen(true)
   }
 
@@ -67,14 +56,14 @@ export default function RestaurantTablePage() {
   const closeModal = () => {
     setModalOpen(false)
     setEditing(null)
-    setForm(EMPTY)
+    setForm(EMPTY_FORM)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
     const err = editing
-      ? await update(editing.id, Number(form.number), Number(form.capacity), form.locationId || null, form.status)
+      ? await update(editing.id, Number(form.number), Number(form.capacity), form.locationId || null, form.status as TableStatus)
       : await create(Number(form.number), Number(form.capacity), form.locationId || null)
     setSaving(false)
     if (err) toast.error(translateError(err))
@@ -99,9 +88,7 @@ export default function RestaurantTablePage() {
   const locationName = (id: string | null) =>
     id ? (locations.find((l) => l.id === id)?.name ?? '—') : '—'
 
-  const filterBtnBase = 'px-3 py-1.5 rounded-xl border-2 font-display text-sm font-medium transition-all'
-  const filterBtnActive = 'bg-brand-orange border-stone-dark text-white shadow-[2px_2px_0px_#78350F]'
-  const filterBtnInactive = 'bg-white border-stone-dark/30 text-stone-dark hover:border-stone-dark'
+  const cacheKey = `${statusFilter}-${sortOrder}-${page}-${pageSize}`
 
   return (
     <div className="space-y-6">
@@ -118,228 +105,48 @@ export default function RestaurantTablePage() {
         </button>
       </div>
 
-      {/* Filter bar */}
-      <div className="bg-white border-4 border-stone-dark rounded-2xl px-4 py-3 shadow-[4px_4px_0px_#78350F] flex flex-wrap items-center gap-2">
-        <span className="font-display text-sm text-stone-mid">Estado:</span>
-        {(['all', 'active', 'blocked'] as StatusFilter[]).map((s) => (
-          <button
-            key={s}
-            onClick={() => { setStatusFilter(s); setPage(1) }}
-            className={`${filterBtnBase} ${statusFilter === s ? filterBtnActive : filterBtnInactive}`}
-          >
-            {s === 'all' ? 'Todas' : STATUS_LABEL[s]}
-          </button>
-        ))}
-        <div className="w-px h-5 bg-stone-dark/20 mx-1" />
-        <span className="font-display text-sm text-stone-mid">Orden:</span>
-        <button
-          onClick={() => { setSortOrder('asc'); setPage(1) }}
-          className={`${filterBtnBase} flex items-center gap-1 ${sortOrder === 'asc' ? filterBtnActive : filterBtnInactive}`}
-        >
-          <ArrowUp className="w-3.5 h-3.5" /> Asc
-        </button>
-        <button
-          onClick={() => { setSortOrder('desc'); setPage(1) }}
-          className={`${filterBtnBase} flex items-center gap-1 ${sortOrder === 'desc' ? filterBtnActive : filterBtnInactive}`}
-        >
-          <ArrowDown className="w-3.5 h-3.5" /> Desc
-        </button>
-        {statusFilter !== 'all' && (
-          <button
-            onClick={() => { setStatusFilter('all'); setPage(1) }}
-            className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-xl border-2 border-stone-dark/30 font-display text-sm text-stone-mid hover:border-stone-dark hover:text-stone-dark transition-all"
-          >
-            <X className="w-3.5 h-3.5" />
-            Limpiar
-          </button>
-        )}
-      </div>
+      <TableFilters
+        statusFilter={statusFilter}
+        onStatusFilterChange={(v) => { setStatusFilter(v); setPage(1) }}
+        sortOrder={sortOrder}
+        onSortOrderChange={(v) => { setSortOrder(v); setPage(1) }}
+      />
 
-      {/* Table */}
-      {loading ? (
-        <TableSkeleton cols={5} />
-      ) : (
-        <div
-          key={`${statusFilter}-${sortOrder}-${page}-${pageSize}`}
-          className="bg-white border-4 border-stone-dark rounded-2xl overflow-hidden shadow-[4px_4px_0px_#78350F] animate-fade-in"
-        >
-          <div className="overflow-x-auto">
-          <table className="w-full min-w-[480px]">
-            <thead className="bg-brand-orange">
-              <tr>
-                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">
-                  <button
-                    onClick={() => { setSortOrder(o => o === 'asc' ? 'desc' : 'asc'); setPage(1) }}
-                    className="flex items-center gap-1 hover:opacity-80 transition-opacity"
-                  >
-                    Mesa
-                    {sortOrder === 'asc' ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />}
-                  </button>
-                </th>
-                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Capacidad</th>
-                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Ubicación</th>
-                <th className="text-left px-4 py-3 font-display font-semibold text-white text-sm">Estado</th>
-                <th className="px-4 py-3 w-24" />
-              </tr>
-            </thead>
-            <tbody>
-              {tables.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center font-display text-stone-mid">
-                    {statusFilter !== 'all' ? 'Sin mesas con ese estado' : 'No hay mesas registradas'}
-                  </td>
-                </tr>
-              )}
-              {tables.map((t) => (
-                <tr key={t.id} className="border-t-2 border-stone-dark/10 hover:bg-bg-warm transition-colors">
-                  <td className="px-4 py-3 text-sm font-bold text-stone-dark">#{t.number}</td>
-                  <td className="px-4 py-3 text-sm text-stone-dark">{t.capacity} personas</td>
-                  <td className="px-4 py-3 text-sm text-stone-mid">{locationName(t.locationId)}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-display font-semibold border-2
-                      ${t.status === 'active'
-                        ? 'bg-brand-yellow/30 border-brand-yellow-dark text-stone-dark'
-                        : 'bg-brand-red/10 border-brand-red text-brand-red'
-                      }`}>
-                      {STATUS_LABEL[t.status]}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-1 justify-end">
-                      <Tooltip text="Editar mesa">
-                        <button
-                          onClick={() => openEdit(t)}
-                          className="p-1.5 rounded-lg hover:bg-brand-yellow/40 text-stone-dark transition-colors"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                      </Tooltip>
-                      <Tooltip text="Eliminar mesa">
-                        <button
-                          onClick={() => setDeleteId(t.id)}
-                          className="p-1.5 rounded-lg hover:bg-brand-red/10 text-brand-red transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </Tooltip>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
-        </div>
-      )}
-
-      <TablePagination
+      <TableList
+        tables={tables}
+        loading={loading}
+        statusFilter={statusFilter}
+        cacheKey={cacheKey}
+        sortOrder={sortOrder}
+        onSortToggle={() => { setSortOrder((o) => o === 'asc' ? 'desc' : 'asc'); setPage(1) }}
+        locationName={locationName}
+        onEdit={openEdit}
+        onDelete={setDeleteId}
         total={total}
         page={page}
         pageSize={pageSize}
         onPageChange={setPage}
         onPageSizeChange={(s) => { setPageSize(s); setPage(1) }}
-        loading={loading}
       />
 
-      {/* Create / Edit modal */}
       {modalOpen && (
-        <Modal
-          title={editing ? `Editar mesa #${editing.number}` : 'Nueva mesa'}
+        <TableFormModal
+          editing={editing}
+          form={form}
+          onFormChange={setForm}
           onClose={closeModal}
-        >
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={label}>Número</label>
-                <input
-                  type="number"
-                  min={1}
-                  className={input}
-                  value={form.number}
-                  onChange={(e) => setForm({ ...form, number: e.target.value })}
-                  required
-                  autoFocus
-                />
-              </div>
-              <div>
-                <label className={label}>Capacidad</label>
-                <input
-                  type="number"
-                  min={1}
-                  className={input}
-                  value={form.capacity}
-                  onChange={(e) => setForm({ ...form, capacity: e.target.value })}
-                  required
-                />
-              </div>
-            </div>
-            <div>
-              <label className={label}>Ubicación</label>
-              <CustomSelect
-                value={form.locationId}
-                onChange={(v) => setForm({ ...form, locationId: v })}
-                placeholder="Sin ubicación"
-                options={[
-                  { value: '', label: 'Sin ubicación' },
-                  ...locations.map((l) => ({ value: l.id, label: l.name })),
-                ]}
-              />
-            </div>
-            {editing && (
-              <div>
-                <label className={label}>Estado</label>
-                <CustomSelect
-                  value={form.status}
-                  onChange={(v) => setForm({ ...form, status: v as TableStatus })}
-                  options={[
-                    { value: 'active', label: 'Activa' },
-                    { value: 'blocked', label: 'Bloqueada' },
-                  ]}
-                />
-              </div>
-            )}
-            <div className="flex gap-3 pt-1">
-              <button
-                type="button"
-                onClick={closeModal}
-                className="flex-1 py-2 rounded-xl border-2 border-stone-dark font-display font-medium text-sm text-stone-dark hover:bg-bg-warm transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={saving}
-                className="flex-1 py-2 rounded-xl border-2 border-stone-dark bg-brand-orange hover:bg-brand-orange-dark disabled:opacity-50 font-display font-semibold text-sm text-white shadow-[3px_3px_0px_#78350F] hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] transition-all"
-              >
-                {saving ? 'Guardando...' : 'Guardar'}
-              </button>
-            </div>
-          </form>
-        </Modal>
+          onSubmit={handleSubmit}
+          saving={saving}
+          locations={locations}
+        />
       )}
 
-      {/* Delete confirm */}
       {deleteId && (
-        <Modal title="Eliminar mesa" onClose={() => setDeleteId(null)}>
-          <p className="text-sm text-stone-dark mb-6">
-            ¿Estás seguro? Esta acción no se puede deshacer.
-          </p>
-          <div className="flex gap-3">
-            <button
-              onClick={() => setDeleteId(null)}
-              className="flex-1 py-2 rounded-xl border-2 border-stone-dark font-display font-medium text-sm text-stone-dark hover:bg-bg-warm transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={handleDelete}
-              disabled={deleting}
-              className="flex-1 py-2 rounded-xl border-2 border-stone-dark bg-brand-red hover:bg-brand-red-dark disabled:opacity-50 font-display font-semibold text-sm text-white shadow-[3px_3px_0px_#78350F] hover:shadow-none hover:translate-x-[3px] hover:translate-y-[3px] transition-all"
-            >
-              {deleting ? 'Eliminando...' : 'Eliminar'}
-            </button>
-          </div>
-        </Modal>
+        <DeleteTableModal
+          onClose={() => setDeleteId(null)}
+          onConfirm={handleDelete}
+          deleting={deleting}
+        />
       )}
     </div>
   )
